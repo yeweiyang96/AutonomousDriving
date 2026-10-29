@@ -1,0 +1,516 @@
+{
+  "schema": 1,
+  "created_utc": "2026-10-28T20:06:15Z",
+  "environment": {
+    "platform": "Windows-11-10.0.26300-SP0",
+    "python": "3.15.1 (tags/v3.15.1:c37e74c, Oct 21 2026, 06:24:08) [MSC v.1951 64 bit (AMD64)]",
+    "timer": "QueryPerformanceCounter()"
+  },
+  "method": {
+    "timed_region": "host exchange (includes pre-request tick) + one post-request tick",
+    "samples_per_round": 3000,
+    "rounds": 7,
+    "warmup_per_round": 100,
+    "percentile": "p50 median, p95 nearest rank",
+    "gc_during_measurement": "disabled",
+    "completion_callback": "If the DLL exports complete_keyboard, submit and STOP workloads also measure that fake success callback separately and combined. Includes an extra ctypes call; this is not physical USB completion latency.",
+    "limits": "Host CPU + ctypes microbenchmark only; no sockets, physical USB, MCU cores, or game. Does not establish or guarantee on-device or end-to-end latency."
+  },
+  "control_wire_bytes": {
+    "request": 40,
+    "response": 48,
+    "responses_per_request": 1,
+    "scope": "legacy exchange API; actual network traffic is not measured"
+  },
+  "optional_diagnostic_wire_bytes": {
+    "request": 40,
+    "response": 160,
+    "scope": "only measured for DLLs exposing exchange_diagnostic"
+  },
+  "libraries": {
+    "baseline": {
+      "path": "D:\\wangzekun\\Documents\\AutonomousDriving\\runtime\\tmp\\lease-diagnostics-benchmark\\hid_lease_host_baseline.dll",
+      "sha256": "daad1d32a0b173722918f39dd03ce12c6b3288c48a6ec824aafeeee1b1f5fae0",
+      "bytes": 108544,
+      "workloads": {
+        "set": {
+          "count": 21000,
+          "p50_us": 1.9,
+          "p95_us": 3.8,
+          "max_us": 319.1,
+          "usb_reports": 21000,
+          "usb_release_reports": 0,
+          "unexpected_duplicate_reports": 0,
+          "rounds": [
+            {
+              "count": 3000,
+              "p50_us": 1.9,
+              "p95_us": 2.3,
+              "max_us": 119.8
+            },
+            {
+              "count": 3000,
+              "p50_us": 1.9,
+              "p95_us": 2.1,
+              "max_us": 243.0
+            },
+            {
+              "count": 3000,
+              "p50_us": 1.9,
+              "p95_us": 2.2,
+              "max_us": 319.1
+            },
+            {
+              "count": 3000,
+              "p50_us": 1.9,
+              "p95_us": 2.1,
+              "max_us": 182.8
+            },
+            {
+              "count": 3000,
+              "p50_us": 1.9,
+              "p95_us": 4.5,
+              "max_us": 121.9
+            },
+            {
+              "count": 3000,
+              "p50_us": 2.1,
+              "p95_us": 4.8,
+              "max_us": 107.4
+            },
+            {
+              "count": 3000,
+              "p50_us": 1.8,
+              "p95_us": 3.6,
+              "max_us": 299.9
+            }
+          ]
+        },
+        "renew": {
+          "count": 21000,
+          "p50_us": 1.9,
+          "p95_us": 3.5,
+          "max_us": 5213.2,
+          "usb_reports": 0,
+          "usb_release_reports": 0,
+          "unexpected_duplicate_reports": 0,
+          "rounds": [
+            {
+              "count": 3000,
+              "p50_us": 1.9,
+              "p95_us": 2.2,
+              "max_us": 3487.1
+            },
+            {
+              "count": 3000,
+              "p50_us": 1.9,
+              "p95_us": 2.5,
+              "max_us": 476.5
+            },
+            {
+              "count": 3000,
+              "p50_us": 1.9,
+              "p95_us": 2.5,
+              "max_us": 5213.2
+            },
+            {
+              "count": 3000,
+              "p50_us": 1.9,
+              "p95_us": 2.5,
+              "max_us": 3865.8
+            },
+            {
+              "count": 3000,
+              "p50_us": 1.8,
+              "p95_us": 4.6,
+              "max_us": 120.0
+            },
+            {
+              "count": 3000,
+              "p50_us": 1.9,
+              "p95_us": 4.4,
+              "max_us": 166.3
+            },
+            {
+              "count": 3000,
+              "p50_us": 1.9,
+              "p95_us": 2.3,
+              "max_us": 3074.6
+            }
+          ]
+        },
+        "stop": {
+          "count": 21000,
+          "p50_us": 1.9,
+          "p95_us": 4.1,
+          "max_us": 592.1,
+          "usb_reports": 21000,
+          "usb_release_reports": 21000,
+          "unexpected_duplicate_reports": 0,
+          "rounds": [
+            {
+              "count": 3000,
+              "p50_us": 1.9,
+              "p95_us": 3.9,
+              "max_us": 422.1
+            },
+            {
+              "count": 3000,
+              "p50_us": 1.9,
+              "p95_us": 2.6,
+              "max_us": 166.3
+            },
+            {
+              "count": 3000,
+              "p50_us": 2.0,
+              "p95_us": 4.7,
+              "max_us": 96.4
+            },
+            {
+              "count": 3000,
+              "p50_us": 1.9,
+              "p95_us": 3.1,
+              "max_us": 592.1
+            },
+            {
+              "count": 3000,
+              "p50_us": 2.0,
+              "p95_us": 4.8,
+              "max_us": 326.0
+            },
+            {
+              "count": 3000,
+              "p50_us": 1.8,
+              "p95_us": 4.3,
+              "max_us": 209.6
+            },
+            {
+              "count": 3000,
+              "p50_us": 1.9,
+              "p95_us": 2.6,
+              "max_us": 107.4
+            }
+          ]
+        }
+      }
+    },
+    "candidate": {
+      "path": "D:\\wangzekun\\Documents\\AutonomousDriving\\runtime\\tmp\\lease-diagnostics-benchmark\\hid_lease_host_final.dll",
+      "sha256": "1ca4b812df495efaca41f42ea906bcac8c1290ad8bab8c489f9665b10f8822e2",
+      "bytes": 112640,
+      "workloads": {
+        "set": {
+          "count": 21000,
+          "p50_us": 1.9,
+          "p95_us": 4.3,
+          "max_us": 2119.4,
+          "usb_reports": 21000,
+          "usb_release_reports": 0,
+          "unexpected_duplicate_reports": 0,
+          "rounds": [
+            {
+              "count": 3000,
+              "p50_us": 1.6,
+              "p95_us": 4.0,
+              "max_us": 36.9
+            },
+            {
+              "count": 3000,
+              "p50_us": 1.9,
+              "p95_us": 4.6,
+              "max_us": 99.2
+            },
+            {
+              "count": 3000,
+              "p50_us": 1.9,
+              "p95_us": 4.9,
+              "max_us": 120.2
+            },
+            {
+              "count": 3000,
+              "p50_us": 1.9,
+              "p95_us": 2.1,
+              "max_us": 1332.4
+            },
+            {
+              "count": 3000,
+              "p50_us": 2.1,
+              "p95_us": 5.0,
+              "max_us": 147.0
+            },
+            {
+              "count": 3000,
+              "p50_us": 1.9,
+              "p95_us": 3.7,
+              "max_us": 2119.4
+            },
+            {
+              "count": 3000,
+              "p50_us": 1.9,
+              "p95_us": 2.1,
+              "max_us": 132.0
+            }
+          ],
+          "completion_callback": {
+            "count": 21000,
+            "p50_us": 1.0,
+            "p95_us": 1.8,
+            "max_us": 162.0
+          },
+          "including_completion_callback": {
+            "count": 21000,
+            "p50_us": 2.9,
+            "p95_us": 6.1,
+            "max_us": 2124.3
+          }
+        },
+        "renew": {
+          "count": 21000,
+          "p50_us": 1.9,
+          "p95_us": 4.1,
+          "max_us": 7399.3,
+          "usb_reports": 0,
+          "usb_release_reports": 0,
+          "unexpected_duplicate_reports": 0,
+          "rounds": [
+            {
+              "count": 3000,
+              "p50_us": 2.0,
+              "p95_us": 4.7,
+              "max_us": 123.4
+            },
+            {
+              "count": 3000,
+              "p50_us": 1.9,
+              "p95_us": 2.8,
+              "max_us": 7399.3
+            },
+            {
+              "count": 3000,
+              "p50_us": 1.9,
+              "p95_us": 4.8,
+              "max_us": 180.7
+            },
+            {
+              "count": 3000,
+              "p50_us": 1.9,
+              "p95_us": 2.1,
+              "max_us": 122.7
+            },
+            {
+              "count": 3000,
+              "p50_us": 1.6,
+              "p95_us": 4.4,
+              "max_us": 69.7
+            },
+            {
+              "count": 3000,
+              "p50_us": 1.9,
+              "p95_us": 2.2,
+              "max_us": 178.4
+            },
+            {
+              "count": 3000,
+              "p50_us": 1.9,
+              "p95_us": 2.2,
+              "max_us": 118.1
+            }
+          ]
+        },
+        "stop": {
+          "count": 21000,
+          "p50_us": 2.0,
+          "p95_us": 4.3,
+          "max_us": 2085.0,
+          "usb_reports": 21000,
+          "usb_release_reports": 21000,
+          "unexpected_duplicate_reports": 0,
+          "rounds": [
+            {
+              "count": 3000,
+              "p50_us": 2.0,
+              "p95_us": 4.9,
+              "max_us": 81.3
+            },
+            {
+              "count": 3000,
+              "p50_us": 1.9,
+              "p95_us": 2.6,
+              "max_us": 2085.0
+            },
+            {
+              "count": 3000,
+              "p50_us": 2.1,
+              "p95_us": 5.1,
+              "max_us": 320.9
+            },
+            {
+              "count": 3000,
+              "p50_us": 2.0,
+              "p95_us": 2.4,
+              "max_us": 349.5
+            },
+            {
+              "count": 3000,
+              "p50_us": 2.0,
+              "p95_us": 3.2,
+              "max_us": 246.3
+            },
+            {
+              "count": 3000,
+              "p50_us": 2.0,
+              "p95_us": 4.3,
+              "max_us": 278.9
+            },
+            {
+              "count": 3000,
+              "p50_us": 2.0,
+              "p95_us": 4.2,
+              "max_us": 1217.8
+            }
+          ],
+          "completion_callback": {
+            "count": 21000,
+            "p50_us": 1.1,
+            "p95_us": 2.0,
+            "max_us": 575.8
+          },
+          "including_completion_callback": {
+            "count": 21000,
+            "p50_us": 3.0,
+            "p95_us": 6.4,
+            "max_us": 2101.7
+          }
+        },
+        "diagnostic": {
+          "count": 21000,
+          "p50_us": 1.9,
+          "p95_us": 3.6,
+          "max_us": 1255.3,
+          "usb_reports": 0,
+          "usb_release_reports": 0,
+          "unexpected_duplicate_reports": 0,
+          "rounds": [
+            {
+              "count": 3000,
+              "p50_us": 2.0,
+              "p95_us": 4.4,
+              "max_us": 54.3
+            },
+            {
+              "count": 3000,
+              "p50_us": 1.9,
+              "p95_us": 2.3,
+              "max_us": 1255.3
+            },
+            {
+              "count": 3000,
+              "p50_us": 1.9,
+              "p95_us": 2.1,
+              "max_us": 304.7
+            },
+            {
+              "count": 3000,
+              "p50_us": 1.9,
+              "p95_us": 2.4,
+              "max_us": 132.7
+            },
+            {
+              "count": 3000,
+              "p50_us": 1.9,
+              "p95_us": 2.3,
+              "max_us": 382.5
+            },
+            {
+              "count": 3000,
+              "p50_us": 2.0,
+              "p95_us": 4.5,
+              "max_us": 317.2
+            },
+            {
+              "count": 3000,
+              "p50_us": 1.9,
+              "p95_us": 4.2,
+              "max_us": 165.2
+            }
+          ]
+        },
+        "network_heartbeat": {
+          "count": 21000,
+          "p50_us": 0.6,
+          "p95_us": 0.8,
+          "max_us": 297.0,
+          "usb_reports": 0,
+          "usb_release_reports": 0,
+          "unexpected_duplicate_reports": 0,
+          "rounds": [
+            {
+              "count": 3000,
+              "p50_us": 0.6,
+              "p95_us": 0.9,
+              "max_us": 141.1
+            },
+            {
+              "count": 3000,
+              "p50_us": 0.6,
+              "p95_us": 0.6,
+              "max_us": 8.6
+            },
+            {
+              "count": 3000,
+              "p50_us": 0.6,
+              "p95_us": 0.6,
+              "max_us": 10.2
+            },
+            {
+              "count": 3000,
+              "p50_us": 0.6,
+              "p95_us": 0.7,
+              "max_us": 297.0
+            },
+            {
+              "count": 3000,
+              "p50_us": 0.6,
+              "p95_us": 0.6,
+              "max_us": 123.2
+            },
+            {
+              "count": 3000,
+              "p50_us": 0.6,
+              "p95_us": 0.9,
+              "max_us": 18.3
+            },
+            {
+              "count": 3000,
+              "p50_us": 0.6,
+              "p95_us": 0.8,
+              "max_us": 20.5
+            }
+          ],
+          "timed_region": "one network_heartbeat_us host call; no exchange or tick",
+          "comparison_limit": "No old-library export; absolute host cost only"
+        }
+      }
+    }
+  },
+  "candidate_over_baseline": {
+    "set": {
+      "p50_us_ratio": 1.0,
+      "p95_us_ratio": 1.1316,
+      "max_us_ratio": 6.6418,
+      "p50_delta_us": 0.0
+    },
+    "renew": {
+      "p50_us_ratio": 1.0,
+      "p95_us_ratio": 1.1714,
+      "max_us_ratio": 1.4193,
+      "p50_delta_us": 0.0
+    },
+    "stop": {
+      "p50_us_ratio": 1.0526,
+      "p95_us_ratio": 1.0488,
+      "max_us_ratio": 3.5214,
+      "p50_delta_us": 0.1
+    }
+  }
+}

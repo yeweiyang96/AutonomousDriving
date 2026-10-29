@@ -1,0 +1,320 @@
+"""Offline, height-aware static-collision navigation using the local Detour pack.
+
+No connection to the game/server. Missing, incompatible or incomplete data never
+falls back silently to an unchecked straight line or the old coarse grid.
+"""
+from __future__ import annotations
+
+from contextlib import contextmanager
+import ctypes as C
+import hashlib
+import json
+import math
+from pathlib import Path
+import struct
+import threading
+
+from .data import TILE_SIZE, WORLD_TOP
+from .models import PlanningError, Point, Route, Segment
+
+ERRORS = {
+    1: ('navmesh_format', '精细导航数据格式不兼容，请重新生成数据包'),
+    2: ('navmesh_memory', '精细导航内存不足'),
+    3: ('navmesh_outside', '所选位置不在可步行表面内；未将坐标移动到别处'),
+    4: ('navmesh_height', '所选位置有多层地面，请选择起点或终点高度'),
+    5: ('no_route', '静态碰撞网格中没有完整步行路线；没有返回部分路线'),
+    6: ('budget', '精细导航搜索或数据预算已用尽'),
+    7: ('cancelled', '规划已取消'),
+    8: ('blocked_navmesh', '路线经过被排除的连接或非步行连接'),
+}
+CALLBACK = C.CFUNCTYPE(C.c_int)
+
+
+def checked(result):
+    if result:
+        raise PlanningError(*ERRORS.get(result, ('navmesh_error', '精细导航失败')))
+
+
+class Native:
+    def __init__(self, path):
+        self.dll = C.CDLL(str(path.resolve()))
+        ptr, ints, floats, refs = C.c_void_p, C.POINTER(C.c_int), C.POINTER(C.c_float), C.POINTER(C.c_uint64)
+        specs = {
+            'ad_create': ([ptr, C.c_int, C.POINTER(ptr)], C.c_int),
+            'ad_destroy': ([ptr], None),
+            'ad_add': ([ptr, ptr, C.c_int], C.c_int),
+            'ad_surfaces': ([ptr, floats, floats, C.c_int, ints], C.c_int),
+            'ad_poly_key': ([ptr, C.c_uint64, ints], C.c_int),
+            'ad_block': ([ptr, ints, ints], C.c_int),
+            'ad_path': ([ptr, floats, floats, C.c_int, CALLBACK, floats, refs, C.c_int, ints, ints], C.c_int),
+        }
+        for name, (args, result) in specs.items():
+            fn = getattr(self.dll, name)
+            fn.argtypes, fn.restype = args, result
+
+
+def vector(point):
+    return (C.c_float * 3)(point.x, point.y, point.z if point.z is not None else math.nan)
+
+
+def validate_point(point):
+    if (point.c not in (0, 1) or not all(math.isfinite(v) and abs(v) <= WORLD_TOP for v in (point.x, point.y))
+            or point.z is not None and (not math.isfinite(point.z) or abs(point.z) > 20000)):
+        raise PlanningError('navmesh_outside', '坐标超出精细导航数据范围')
+
+
+class Mesh:
+    def __init__(self, pack, c, cancel=None):
+        self.pack, self.c, self.cancel = pack, c, cancel
+        self.handle = C.c_void_p()
+        data = pack.read(pack.maps[c])
+        checked(pack.native.dll.ad_create(data, len(data), C.byref(self.handle)))
+        self.loaded, self.bytes, self.keys = set(), 0, {}
+
+    def close(self):
+        if self.handle:
+            self.pack.native.dll.ad_destroy(self.handle)
+            self.handle = C.c_void_p()
+
+    def cancelled(self):
+        return bool(self.cancel and self.cancel.is_set())
+
+    def load(self, keys):
+        for key in sorted(keys):
+            if self.cancelled():
+                raise PlanningError(*ERRORS[7])
+            entry = self.pack.tiles.get((self.c, *key))
+            if key in self.loaded or entry is None:
+                continue
+            if self.bytes + entry['bytes'] > self.pack.max_bytes:
+                raise PlanningError(*ERRORS[6])
+            data = self.pack.read(entry)
+            checked(self.pack.native.dll.ad_add(self.handle, data, len(data)))
+            self.bytes += len(data)
+            self.loaded.add(key)
+
+    def heights(self, point):
+        result, count = (C.c_float * 32)(), C.c_int()
+        rc = self.pack.native.dll.ad_surfaces(self.handle, vector(point), result, len(result), C.byref(count))
+        if rc == 3:
+            return []
+        checked(rc)
+        return list(result[:count.value])
+
+    def key(self, ref):
+        if ref not in self.keys:
+            key = (C.c_int * 3)()
+            checked(self.pack.native.dll.ad_poly_key(self.handle, ref, key))
+            self.keys[ref] = ','.join(map(str, key))
+        return self.keys[ref]
+
+    def block(self, edges):
+        prefix = f'nav:{self.pack.identity}:{self.c}:'
+        for edge in edges:
+            if not edge.startswith(prefix):
+                continue
+            try:
+                a, b = edge[len(prefix):].split(':')
+                ka, kb = tuple(map(int, a.split(','))), tuple(map(int, b.split(',')))
+                if len(ka) != 3 or len(kb) != 3:
+                    continue
+            except ValueError:
+                continue
+            checked(self.pack.native.dll.ad_block(self.handle, (C.c_int * 3)(*ka), (C.c_int * 3)(*kb)))
+
+    def path(self, start, goal, budget):
+        if self.cancelled():
+            raise PlanningError(*ERRORS[7])
+        cap = 65535
+        values, refs, count, expanded = (C.c_float * (cap * 3))(), (C.c_uint64 * cap)(), C.c_int(), C.c_int()
+        callback = CALLBACK(lambda: int(self.cancelled()))
+        rc = self.pack.native.dll.ad_path(self.handle, vector(start), vector(goal), budget, callback,
+                                          values, refs, cap, C.byref(count), C.byref(expanded))
+        try:
+            checked(rc)
+        except PlanningError as exc:
+            exc.expanded = expanded.value
+            raise
+        points = [Point(self.c, *values[i * 3:i * 3 + 3]) for i in range(count.value)]
+        if not points or start.distance(points[0]) > .02 or goal.distance(points[-1]) > .02:
+            raise PlanningError('navmesh_endpoint', '精细路线未到达原始起终点')
+        # Float32 geometry is allowed; the user's XY endpoints remain exact.
+        points[0] = Point(self.c, start.x, start.y, points[0].z)
+        points[-1] = Point(self.c, goal.x, goal.y, points[-1].z)
+        segments = []
+        for i, (a, b) in enumerate(zip(points, points[1:])):
+            if a.distance(b) <= 1e-5:
+                if abs(a.z - b.z) > .8:
+                    raise PlanningError('navmesh_step', '路线包含无法步行通过的高度突变')
+                continue
+            edge_id = f'nav:{self.pack.identity}:{self.c}:{self.key(refs[i])}:{self.key(refs[i+1])}'
+            segments.append(Segment((a, b), 'navmesh: static terrain + WMO/M2 collision', 'navmesh', edge_id))
+        return segments, expanded.value
+
+
+class NavMeshPack:
+    def __init__(self, manifest):
+        self.root = manifest.parent.resolve()
+        raw = json.loads(manifest.read_text(encoding='utf-8'))
+        if raw.get('schema') != 1 or raw.get('kind') != 'adrive-ground-navmesh' or raw.get('mmap_version') != 16:
+            raise ValueError('Unsupported navigation pack')
+        if raw['settings']['walkable_climb_yards'] > .8 or raw['settings']['agent_radius_yards'] < .5:
+            raise ValueError('Unsupported navigation agent settings')
+        self.raw, self.identity, self.build = raw, raw['identity'], raw['client']['version']
+        self.tiles = {(t['c'], t['row'], t['col']): t for t in raw['tiles']}
+        self.maps = {t['c']: t for t in raw['maps']}
+        if len(self.tiles) != len(raw['tiles']) or set(self.maps) != {0, 1}:
+            raise ValueError('Incomplete or duplicate navigation index')
+        for t in raw['tiles']:
+            if t['c'] not in (0, 1) or not 0 <= t['row'] < 64 or not 0 <= t['col'] < 64:
+                raise ValueError('Invalid navigation tile coordinate')
+        for entry in [*raw['maps'], *raw['tiles'], raw['library']]:
+            if not (self.root / entry['path']).resolve().is_relative_to(self.root):
+                raise ValueError('Navigation path escapes pack')
+        self.read(raw['library'])
+        self.native = Native(self.root / raw['library']['path'])
+        self.max_bytes = 384 * 1024 * 1024
+
+    def read(self, entry):
+        try:
+            data = (self.root / entry['path']).read_bytes()
+        except OSError as exc:
+            raise PlanningError('navmesh_missing', f'精细导航文件缺失：{entry["path"]}') from exc
+        if len(data) != entry['bytes'] or hashlib.sha256(data).hexdigest() != entry['sha256']:
+            raise PlanningError('navmesh_integrity', f'精细导航文件校验失败：{entry["path"]}')
+        return data
+
+    @staticmethod
+    def around(point, radius=1):
+        row, col = math.floor((WORLD_TOP-point.x)/TILE_SIZE), math.floor((WORLD_TOP-point.y)/TILE_SIZE)
+        return {(r, c) for r in range(max(0,row-radius), min(64,row+radius+1))
+                for c in range(max(0,col-radius), min(64,col+radius+1))}
+
+    @contextmanager
+    def mesh(self, c, cancel=None):
+        mesh = Mesh(self, c, cancel)
+        try:
+            yield mesh
+        finally:
+            mesh.close()
+
+    def heights(self, point):
+        validate_point(point)
+        with self.mesh(point.c) as mesh:
+            mesh.load(self.around(point))
+            return mesh.heights(point)
+
+    def plan(self, start, goal, guide=None, blocked_edges=frozenset(), cancel=None, max_expansions=500000):
+        validate_point(start)
+        validate_point(goal)
+        if start.c != goal.c:
+            raise PlanningError('different_continent', '精细导航不能跨大陆')
+        with self.mesh(start.c, cancel) as mesh:
+            # Keep actual road vertices as preferences, not the old 16.7-yard
+            # terrain cell centres. Wilderness paths use the fine mesh directly.
+            reference = [start]
+            road_segments = [s for s in guide.segments if s.reliability in ('reviewed', 'candidate')] if guide else []
+            for segment in road_segments:
+                for point in segment.points:
+                    if reference[-1].distance(point) > 1e-5:
+                        reference.append(point)
+            if reference[-1].distance(goal) > 1e-5 or len(reference) == 1:
+                reference.append(goal)
+            else:
+                reference[-1] = goal
+            keys = set()
+            # Load the corridor around the reference route, including boundaries.
+            for a, b in zip(reference, reference[1:]):
+                steps = max(1, math.ceil(a.distance(b)/(TILE_SIZE/2)))
+                for i in range(steps+1):
+                    t = i/steps
+                    keys.update(self.around(Point(a.c, a.x+(b.x-a.x)*t, a.y+(b.y-a.y)*t)))
+            if not keys:
+                keys = self.around(start)
+            mesh.load(keys)
+            mesh.block(blocked_edges)
+            resolved = []
+            for label, p in (('起点', start), ('终点', goal)):
+                hs = mesh.heights(p)
+                if not hs:
+                    if p.z is not None and mesh.heights(Point(p.c, p.x, p.y)):
+                        raise PlanningError('navmesh_height_mismatch', f'{label}高度与可步行地面不符，请确认角色高度或所选楼层')
+                    raise PlanningError(ERRORS[3][0], label + '不在可步行表面内；未将坐标移动到别处')
+                if p.z is None and len(hs)>1:
+                    raise PlanningError(ERRORS[4][0], label + '有多层地面，请确认角色高度或选择对应楼层')
+                if p.z is not None:
+                    hs.sort(key=lambda h:abs(h-p.z))
+                    if len(hs)>1 and abs(abs(hs[0]-p.z)-abs(hs[1]-p.z)) < .35:
+                        raise PlanningError(*ERRORS[4])
+                resolved.append(Point(p.c,p.x,p.y,hs[0]))
+            start,goal = resolved
+            reference[0], reference[-1] = start, goal
+            if start.distance(goal) <= 1e-7 and abs(start.z-goal.z) < .35:
+                return Route(start, goal, (), 0)
+            # Retain the original reviewed-road preference when all reference
+            # waypoints can be joined through collision geometry. Road labels
+            # never override a blocked/missing polygon.
+            expanded, segments = 0, []
+            current = start
+            if road_segments:
+                failures = 0
+                for index, waypoint in enumerate(reference[1:], 1):
+                    internal = index < len(reference)-1
+                    candidates = [waypoint]
+                    if internal and waypoint.z is None:
+                        candidates = [Point(waypoint.c,waypoint.x,waypoint.y,h)
+                                      for h in sorted(mesh.heights(waypoint),key=lambda h:abs(h-current.z))]
+                    connected = False
+                    for target in candidates:
+                        try:
+                            # A coarse hint may lie on an inaccessible roof or
+                            # small island. Bound its search; skip failed hints,
+                            # never snap or invent a connection to them.
+                            budget = min(4096,max_expansions-expanded) if internal else max_expansions-expanded
+                            parts,count = mesh.path(current,target,budget)
+                            expanded += count
+                            segments.extend(parts)
+                            current = parts[-1].points[-1] if parts else target
+                            connected = True
+                            break
+                        except PlanningError as exc:
+                            expanded += getattr(exc,'expanded',0)
+                            if (exc.code not in ('no_route','navmesh_outside','navmesh_height','budget','blocked_navmesh')
+                                    or expanded >= max_expansions):
+                                raise
+                    failures = 0 if connected else failures+1
+                    if not internal:
+                        if connected:
+                            return Route(start,goal,tuple(segments),expanded)
+                        break
+                    if failures >= 8:
+                        break
+                # Reference roads are preferences. Find a complete geometric
+                # alternative, never return the rejected coarse path.
+            for radius in (1, 2, 4):
+                if radius > 1:
+                    extra = {(r+dr,c+dc) for r,c in keys for dr in range(-radius,radius+1)
+                             for dc in range(-radius,radius+1) if 0<=r+dr<64 and 0<=c+dc<64}
+                    mesh.load(extra)
+                    mesh.block(blocked_edges)
+                try:
+                    parts, count = mesh.path(start, goal, max_expansions-expanded)
+                    return Route(start, goal, tuple(parts), expanded+count)
+                except PlanningError as exc:
+                    expanded += getattr(exc, 'expanded', 0)
+                    if exc.code != 'no_route' or radius == 4:
+                        raise
+
+
+def load_pack(asset_root):
+    if asset_root is None:
+        return None
+    manifest = asset_root / 'navigation/manifest.json'
+    if not manifest.exists():
+        return None
+    try:
+        return NavMeshPack(manifest)
+    except PlanningError:
+        raise
+    except (OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
+        raise PlanningError('navmesh_invalid', f'精细导航包不可用：{exc}') from exc

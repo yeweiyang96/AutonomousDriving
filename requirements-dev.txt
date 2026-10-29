@@ -1,0 +1,2 @@
+# Optional test-only Lua 5.1 / LuaJIT execution. Not needed by the application.
+lupa==2.8

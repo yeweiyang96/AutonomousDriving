@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.py[cod]
+runtime/
+.pytest_cache/
+*.log
+addons/OpenMap/
+addons/MapWise/
+addons/AzerothGPS/
+data/

@@ -1,0 +1,86 @@
+{
+  "origin": {
+    "source": "/home/wangzekun/forever/TrinityCore-integrated",
+    "remote": "https://github.com/advocaite/TrinityCore",
+    "revision": "84cb227ab4580623d58e51d5dffde3b66f2ef4f5",
+    "relevant_worktree_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "tools_sha256": {
+      "mapextractor": "99c73a7aaae9e5667ee723b8a13b3d064a8654051f806b4db2d20ddde6aa5211",
+      "vmap4extractor": "20cb907922e87538f873dd1231c355dbc2ba4a4f2dc221c44eb7050e03a5180b",
+      "vmap4assembler": "7c7dd8e82204aa62d4420c90e84c6c2216b307157d672ced1ce9fff8e0526a41",
+      "mmaps_generator": "cdd490271d715b945ea214da5b787ef366ac3b5c49b9c3e89c769f52f5a33451"
+    },
+    "tool_banner_revision": "fdf018a9d0d5 (see retained extraction logs)"
+  },
+  "license": "zlib, see License.txt and individual source headers",
+  "files": [
+    {
+      "path": "Include/DetourAlloc.h",
+      "sha256": "5f617c7f162069c395d7edfc59f0e06a9b6afaf6698de8fd674c80f00056ab71"
+    },
+    {
+      "path": "Include/DetourAssert.h",
+      "sha256": "4e453656cd092b58520c780daccbf4328842616f3eb0ca2ebb5b307ceecc9c7e"
+    },
+    {
+      "path": "Include/DetourCommon.h",
+      "sha256": "762e499282c7dab9bbe733ecf19fd875ea5804d2e11eaf3c39b7e81fb9151c30"
+    },
+    {
+      "path": "Include/DetourMath.h",
+      "sha256": "90c4799b672852b0d07531eb29fb029a1e4f34e46d97aa003c7e119531f9c535"
+    },
+    {
+      "path": "Include/DetourNavMesh.h",
+      "sha256": "201732481a638843164065b8fde938621c3e9d44fe1e067dc1cc5f602c4fbf18"
+    },
+    {
+      "path": "Include/DetourNavMeshBuilder.h",
+      "sha256": "39fde320de4931e85949215ca9395e1027980572afe4962dfbc7d02804131798"
+    },
+    {
+      "path": "Include/DetourNavMeshQuery.h",
+      "sha256": "f6b1e1b3b4d68172f77b28111d96feac8d750223e0c027d38d4569e970d7a9bf"
+    },
+    {
+      "path": "Include/DetourNode.h",
+      "sha256": "e9db7762a40736d3c857f44e4926b3d922924eb05a46f894dd469e08aee5a980"
+    },
+    {
+      "path": "Include/DetourStatus.h",
+      "sha256": "7255e33173c4bdb26f4224514d098fdc5c31e19cd80263a4e56475627602ade9"
+    },
+    {
+      "path": "License.txt",
+      "sha256": "5881db2682bc4871837e36b5af4460f59905a7944848221406f841eaa3fda8c4"
+    },
+    {
+      "path": "Source/DetourAlloc.cpp",
+      "sha256": "ddf4d9857e9e1714daa9dd9b687ac8139085cc602359db0dba4f1dedbedc69c1"
+    },
+    {
+      "path": "Source/DetourAssert.cpp",
+      "sha256": "d7e05a59d390b02c3d7b2c3bbdf5c243f11ea36962243600c5acb26cdb80f796"
+    },
+    {
+      "path": "Source/DetourCommon.cpp",
+      "sha256": "eb7516240af2ab86d7c1c2b64a7cd7e379bbd3acf9df3825c85d342ba407ccc6"
+    },
+    {
+      "path": "Source/DetourNavMesh.cpp",
+      "sha256": "416ea9ee1789da37aa6e08d221dcb14c1834cbb09d6c826ea6597a5deaf49535"
+    },
+    {
+      "path": "Source/DetourNavMeshBuilder.cpp",
+      "sha256": "bbe5adf461cae282291e498db50550eb3a12706e352dd83021165d38950119f3"
+    },
+    {
+      "path": "Source/DetourNavMeshQuery.cpp",
+      "sha256": "62f83245deb40b4db28b9f4f0b0dd462117aed2c5b737993ffecc226bef38829"
+    },
+    {
+      "path": "Source/DetourNode.cpp",
+      "sha256": "067ffb9a81f7315f2253ff217263acb1c01590d130e01d4de4500308d756132b"
+    }
+  ]
+}

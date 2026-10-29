@@ -1,0 +1,20 @@
+﻿param([string]$CMake)
+$ErrorActionPreference = 'Stop'
+$taskRoot = Split-Path -Parent $PSScriptRoot
+if (-not $CMake) {
+    $found = Get-Command cmake -ErrorAction SilentlyContinue
+    if ($found) { $CMake = $found.Source }
+    else {
+        $bundled = Join-Path (Split-Path -Parent $taskRoot) 'hid_usb\.tools\cmake'
+        $CMake = Get-ChildItem -LiteralPath $bundled -Filter cmake.exe -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
+    }
+}
+if (-not $CMake) { throw '需要 CMake 和 Visual Studio C++ Build Tools。' }
+$build = Join-Path $taskRoot 'runtime\navmesh-build'
+& $CMake -S (Join-Path $taskRoot 'native\navmesh') -B $build -A x64
+if ($LASTEXITCODE -ne 0) { throw '导航库配置失败' }
+& $CMake --build $build --config Release --parallel 4
+if ($LASTEXITCODE -ne 0) { throw '导航库编译失败' }
+New-Item -ItemType Directory -Force -Path (Join-Path $taskRoot 'data\navigation') | Out-Null
+Copy-Item -LiteralPath (Join-Path $build 'Release\adrive_navmesh.dll') -Destination (Join-Path $taskRoot 'data\navigation\adrive_navmesh.dll')
+Write-Output (Join-Path $taskRoot 'data\navigation\adrive_navmesh.dll')
