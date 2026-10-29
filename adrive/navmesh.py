@@ -1,4 +1,4 @@
-"""Native diagnostic copy: NAV_DEBUG includes the precise native reason and status.
+"""Walking navigation with policy-bounded road searches and explicit diagnostics.
 
 Offline, height-aware static-collision navigation using the local Detour pack.
 
@@ -81,6 +81,11 @@ class Native:
         if self.budget_reason is not None:
             self.budget_reason.argtypes = [ptr, C.POINTER(C.c_uint32)]
             self.budget_reason.restype = C.c_int
+        self.bounded_path = getattr(self.dll, 'ad_path_bounded_v3', None)
+        if self.bounded_path is not None:
+            self.bounded_path.argtypes = [ptr, floats, floats, C.c_int, C.c_float,
+                                           CALLBACK, floats, refs, C.c_int, ints, ints]
+            self.bounded_path.restype = C.c_int
 
 
 def vector(point):
@@ -175,17 +180,45 @@ class Mesh:
                 continue
             checked(self.pack.native.dll.ad_block(self.handle, (C.c_int * 3)(*ka), (C.c_int * 3)(*kb)), source='native.ad_block', **self.debug_context)
 
-    def path(self, start, goal, budget):
+    def path(self, start, goal, budget, *, max_length_xy=None):
         if self.cancelled():
             raise PlanningError(*ERRORS[7])
+        if max_length_xy is not None:
+            if (not math.isfinite(max_length_xy) or max_length_xy < 0
+                    or max_length_xy < start.distance(goal)-.01):
+                raise PlanningError('navmesh_search_bound', '道路搜索长度限制无效')
+            if self.pack.native.bounded_path is None:
+                raise PlanningError('navmesh_capability', '当前 DLL 缺少道路范围搜索接口，请完成 DLL 更新后重新启动导航程序')
         cap = 65535
         values, refs, count, expanded = (C.c_float * (cap * 3))(), (C.c_uint64 * cap)(), C.c_int(), C.c_int()
         callback = CALLBACK(lambda: int(self.cancelled()))
-        rc = self.pack.native.dll.ad_path(self.handle, vector(start), vector(goal), budget, callback,
-                                          values, refs, cap, C.byref(count), C.byref(expanded))
+        if max_length_xy is None:
+            source = 'native.ad_path'
+            rc = self.pack.native.dll.ad_path(self.handle, vector(start), vector(goal), budget, callback,
+                                              values, refs, cap, C.byref(count), C.byref(expanded))
+        else:
+            source = 'native.ad_path_bounded_v3'
+            rc = self.pack.native.bounded_path(self.handle, vector(start), vector(goal), budget,
+                                               max_length_xy, callback, values, refs, cap,
+                                               C.byref(count), C.byref(expanded))
         native_details = self.native_budget_details() if rc == 6 else {}
+        search_details = ({'search_length_limit_xy': max_length_xy,
+                           'search_scope': 'loaded_walk_graph_with_conservative_length_domain',
+                           'global_unreachable_proven': False}
+                          if max_length_xy is not None else {})
         try:
-            checked(rc, source='native.ad_path', **self.debug_context, **native_details,
+            if rc == 10 and max_length_xy is not None:
+                payload = {'source': source, 'rc': rc, **self.debug_context, **search_details,
+                           'passed_budget': budget, 'call_expanded': expanded.value,
+                           'continent': self.c, 'loaded_tiles': len(self.loaded),
+                           'loaded_bytes': self.bytes, 'max_bytes': self.pack.max_bytes,
+                           'start': [start.x, start.y, start.z], 'goal': [goal.x, goal.y, goal.z]}
+                error = PlanningError('road_scope_unconnected',
+                    '当前已加载网格内，道路长度约束限定的搜索范围没有完整步行连接' +
+                    ' | NAV_DEBUG ' + json.dumps(payload, ensure_ascii=False, separators=(',', ':')))
+                error.search_scope = payload
+                raise error
+            checked(rc, source=source, **self.debug_context, **native_details, **search_details,
                     passed_budget=budget, call_expanded=expanded.value,
                     output_count=count.value, output_capacity=cap,
                     continent=self.c, loaded_tiles=len(self.loaded),
@@ -194,6 +227,11 @@ class Mesh:
                     goal=[goal.x, goal.y, goal.z])
         except PlanningError as exc:
             exc.expanded = expanded.value
+            exc.native_debug = {'source': source, 'rc': rc, **self.debug_context,
+                                **native_details, **search_details, 'passed_budget': budget,
+                                'call_expanded': expanded.value, 'continent': self.c,
+                                'loaded_tiles': len(self.loaded), 'loaded_bytes': self.bytes,
+                                'start': [start.x, start.y, start.z], 'goal': [goal.x, goal.y, goal.z]}
             raise
         points = [Point(self.c, *values[i * 3:i * 3 + 3]) for i in range(count.value)]
         if not points or start.distance(points[0]) > .02 or goal.distance(points[-1]) > .02:
@@ -275,7 +313,7 @@ class NavMeshPack:
                      'reliability': s.reliability, 'edge_id': s.edge_id}
                     for s in items[:limit]]
 
-        diagnostic = {'schema': 1, 'planner_version': 'road-corridor-v2',
+        diagnostic = {'schema': 1, 'planner_version': 'road-corridor-v3-bounded',
                       'started_at_utc': datetime.now(timezone.utc).isoformat(),
                       'navigation_identity': self.identity,
                       'native_library_sha256': self.raw['library']['sha256'],
@@ -420,6 +458,11 @@ class NavMeshPack:
                                          'y': fallback_start.y, 'z': fallback_start.z},
                         'remaining_reference_range': exc.remaining_reference_range,
                         'expanded_before': expanded})
+            # This is the same length acceptance used after a completed fallback.
+            # The native domain is a necessary geometric superset, not a new
+            # permission to cross water or a proof about unloaded tiles.
+            fallback_limit = (detour_metrics(fallback_reference, fallback_reference)['length_limit_xy']
+                              if fallback_reference is not None else None)
             for radius in (1, 2, 4):
                 if mesh.cancelled():
                     error = PlanningError('cancelled', '规划已取消')
@@ -439,10 +482,26 @@ class NavMeshPack:
                     mesh.block(blocked_edges)
                 mesh.debug_context['stage'] = 'fallback_path'
                 try:
-                    parts, count = mesh.path(fallback_start, goal, max_expansions-expanded)
+                    parts, count = mesh.path(fallback_start, goal, max_expansions-expanded,
+                                             max_length_xy=fallback_limit)
                 except PlanningError as exc:
                     expanded += getattr(exc, 'expanded', 0)
-                    if exc.code != 'no_route' or radius == 4:
+                    if exc.code == 'road_scope_unconnected':
+                        diagnostic['road_trace'].append({
+                            'mode': 'bounded_remaining_fallback', 'radius': radius,
+                            'status': 'road_scope_unconnected', 'accepted': False,
+                            'native_expanded': getattr(exc, 'expanded', 0), 'expanded_total': expanded,
+                            'search_length_limit_xy': fallback_limit,
+                            'scope': getattr(exc, 'search_scope', {}), 'global_unreachable_proven': False})
+                        if radius == 4:
+                            error = PlanningError('road_connection_unverified',
+                                '道路参考连接未验证：在已加载网格和道路长度约束限定的搜索范围内，'
+                                '无法形成完整步行连接；请检查道路连接与导航表面数据。'
+                                ' | NAV_DEBUG ' + json.dumps(getattr(exc, 'search_scope', {}),
+                                                           ensure_ascii=False, separators=(',', ':')))
+                            error.expanded = expanded
+                            raise error from exc
+                    if exc.code not in ('no_route', 'road_scope_unconnected') or radius == 4:
                         exc.expanded = expanded
                         raise
                     continue

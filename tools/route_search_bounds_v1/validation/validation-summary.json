@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "native_new_abi_checks": "passed_6_groups",
+  "known_success_routes": "passed_8_cases",
+  "known_route_geometry": "all_native_points_exactly_preserved_against_fresh_baseline_and_previous_verified_reports",
+  "current_failed_route": {
+    "linux_fixture_only": true,
+    "full_candidate_route_not_certified": true,
+    "available_tiles": 46,
+    "available_bytes": 50608744,
+    "manifest_index_count": 1724,
+    "no_manifest_filtering": true,
+    "baseline_status": "budget",
+    "baseline_expanded": 156791,
+    "candidate_status": "navmesh_missing",
+    "missing_required_expansion_asset": "1.60.1.70658-20261028T203512Z/mmaps/0000_46_28.mmtile",
+    "local_recorded_failure": {
+      "baseline_expanded": 4096,
+      "candidate_expanded": 62,
+      "candidate_status": "road_scope_unconnected"
+    },
+    "road_phase_expanded": 9526,
+    "first_fallback_expanded": 13626,
+    "total_before_missing_expansion_asset": 23152,
+    "first_scope_result": "road_scope_unconnected; no global-disconnection claim",
+    "all_native_call_work_charged_before_load_failure": true,
+    "sum_native_call_expansions": 23152
+  },
+  "windows_installation_gate": "Must execute full real-case candidate using original full user manifest including verified additional radius2/4 assets before active file switch",
+  "worker_sha256": "14ce602d03e55ca34b4310720dbd41928da0ebf93b9db5e3004a85bbbac7d638",
+  "native_library_sha256": "5c4a897c1c11a71082a8b2d039b1e4f2a79d3a00fb7983fb2a848e5eb208dec0",
+  "python_sources": {
+    "navmesh.py": "40803d4157b3782f230d35eb577c4e1933fb282398a8dc912bcb08444b0533a6",
+    "road_corridor.py": "2a46cd428801ba16bf60ebcf781c9097492dc5b8bdeda19eaea8399f034c4f0e"
+  },
+  "final_status_gate": "Only road_connection_unverified or full native success; internal scoped errors and budget/missing data do not pass"
+}

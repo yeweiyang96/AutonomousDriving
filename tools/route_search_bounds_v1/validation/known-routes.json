@@ -1,0 +1,164 @@
+{
+  "status": "passed",
+  "results": [
+    {
+      "case": "map0_short",
+      "passed": true,
+      "old_expanded": 19,
+      "new_expanded": 19,
+      "old_status": "success",
+      "new_status": "success",
+      "old_length_3d": 41.0717385949979,
+      "new_length_3d": 41.0717385949979,
+      "checks": {
+        "old_success": true,
+        "new_success": true,
+        "same_native_points": true,
+        "matches_previously_verified_points": true,
+        "all_segments_native": true,
+        "exact_endpoint_xy": true,
+        "no_missing_assets": true
+      }
+    },
+    {
+      "case": "map0_short-reverse",
+      "passed": true,
+      "old_expanded": 142,
+      "new_expanded": 132,
+      "old_status": "success",
+      "new_status": "success",
+      "old_length_3d": 41.07165388948413,
+      "new_length_3d": 41.07165388948413,
+      "checks": {
+        "old_success": true,
+        "new_success": true,
+        "same_native_points": true,
+        "matches_previously_verified_points": true,
+        "all_segments_native": true,
+        "exact_endpoint_xy": true,
+        "no_missing_assets": true
+      }
+    },
+    {
+      "case": "map0_long",
+      "passed": true,
+      "old_expanded": 5350,
+      "new_expanded": 5083,
+      "old_status": "success",
+      "new_status": "success",
+      "old_length_3d": 3514.8241907238016,
+      "new_length_3d": 3514.8241907238016,
+      "checks": {
+        "old_success": true,
+        "new_success": true,
+        "same_native_points": true,
+        "matches_previously_verified_points": true,
+        "all_segments_native": true,
+        "exact_endpoint_xy": true,
+        "no_missing_assets": true
+      }
+    },
+    {
+      "case": "map0_long-reverse",
+      "passed": true,
+      "old_expanded": 5553,
+      "new_expanded": 5237,
+      "old_status": "success",
+      "new_status": "success",
+      "old_length_3d": 3516.7395768913193,
+      "new_length_3d": 3516.7395768913193,
+      "checks": {
+        "old_success": true,
+        "new_success": true,
+        "same_native_points": true,
+        "matches_previously_verified_points": true,
+        "all_segments_native": true,
+        "exact_endpoint_xy": true,
+        "no_missing_assets": true
+      }
+    },
+    {
+      "case": "map1_guided_A_to_B",
+      "passed": true,
+      "old_expanded": 14,
+      "new_expanded": 14,
+      "old_status": "success",
+      "new_status": "success",
+      "old_length_3d": 49.69501808726566,
+      "new_length_3d": 49.69501808726566,
+      "checks": {
+        "old_success": true,
+        "new_success": true,
+        "same_native_points": true,
+        "matches_previously_verified_points": true,
+        "all_segments_native": true,
+        "exact_endpoint_xy": true,
+        "no_missing_assets": true
+      }
+    },
+    {
+      "case": "map1_native_A_to_B",
+      "passed": true,
+      "old_expanded": 14,
+      "new_expanded": 14,
+      "old_status": "success",
+      "new_status": "success",
+      "old_length_3d": 49.69501808726566,
+      "new_length_3d": 49.69501808726566,
+      "checks": {
+        "old_success": true,
+        "new_success": true,
+        "same_native_points": true,
+        "matches_previously_verified_points": true,
+        "all_segments_native": true,
+        "exact_endpoint_xy": true,
+        "no_missing_assets": true
+      }
+    },
+    {
+      "case": "map1_guided_B_to_A",
+      "passed": true,
+      "old_expanded": 12,
+      "new_expanded": 12,
+      "old_status": "success",
+      "new_status": "success",
+      "old_length_3d": 49.69501879263459,
+      "new_length_3d": 49.69501879263459,
+      "checks": {
+        "old_success": true,
+        "new_success": true,
+        "same_native_points": true,
+        "matches_previously_verified_points": true,
+        "all_segments_native": true,
+        "exact_endpoint_xy": true,
+        "no_missing_assets": true
+      }
+    },
+    {
+      "case": "map1_native_B_to_A",
+      "passed": true,
+      "old_expanded": 12,
+      "new_expanded": 12,
+      "old_status": "success",
+      "new_status": "success",
+      "old_length_3d": 49.69501879263459,
+      "new_length_3d": 49.69501879263459,
+      "checks": {
+        "old_success": true,
+        "new_success": true,
+        "same_native_points": true,
+        "matches_previously_verified_points": true,
+        "all_segments_native": true,
+        "exact_endpoint_xy": true,
+        "no_missing_assets": true
+      }
+    }
+  ],
+  "library_sha256": "5c4a897c1c11a71082a8b2d039b1e4f2a79d3a00fb7983fb2a848e5eb208dec0",
+  "candidate_source_hashes": {
+    "navmesh.py": "40803d4157b3782f230d35eb577c4e1933fb282398a8dc912bcb08444b0533a6",
+    "road_corridor.py": "2a46cd428801ba16bf60ebcf781c9097492dc5b8bdeda19eaea8399f034c4f0e"
+  },
+  "all_fixture_and_source_assets_unchanged": true,
+  "full_manifest_index_retained": true
+}

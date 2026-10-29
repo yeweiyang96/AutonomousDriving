@@ -1,0 +1,128 @@
+{
+  "baseline": {
+    "status": "budget",
+    "expanded": 156791,
+    "native_calls": 483,
+    "trace_rows": 524,
+    "loaded_tiles": 46,
+    "loaded_bytes": 50608744,
+    "matches_windows_report": true,
+    "all_inputs_unchanged": true
+  },
+  "upper_layer": {
+    "surface_height_at_anchor814": 40.105167388916016,
+    "physical_kind": "UNKNOWN",
+    "component_polygons": 5,
+    "component_link_checks": 8,
+    "unresolved_external_edges": 0,
+    "approach_reachable_in_loaded_walk_graph": false,
+    "exit_reachable_in_loaded_walk_graph": false,
+    "therefore_safe_higher_floor_alternative": false
+  },
+  "candidate_queries": 16,
+  "native_graph_probes": 7,
+  "no_new_acceptable_through_route_proven": true,
+  "bounded_attempts": [
+    {
+      "label": "approach806_surface0_to_814_surface0",
+      "status": "success",
+      "expanded": 13,
+      "length_xy": 57.38910904512944
+    },
+    {
+      "label": "approach806_surface0_to_814_surface1",
+      "status": "budget",
+      "expanded": 8192,
+      "length_xy": null
+    },
+    {
+      "label": "approach806_surface0_to_818_surface0",
+      "status": "success",
+      "expanded": 17,
+      "length_xy": 82.23794500578889
+    },
+    {
+      "label": "approach806_surface0_to_818_surface1",
+      "status": "budget",
+      "expanded": 8192,
+      "length_xy": null
+    },
+    {
+      "label": "approach806_surface0_to_819_surface0",
+      "status": "budget",
+      "expanded": 8192,
+      "length_xy": null
+    },
+    {
+      "label": "approach806_surface0_to_819_surface1",
+      "status": "budget",
+      "expanded": 8192,
+      "length_xy": null
+    },
+    {
+      "label": "approach806_surface0_to_821_surface0",
+      "status": "budget",
+      "expanded": 8192,
+      "length_xy": null
+    },
+    {
+      "label": "approach806_surface0_to_824_surface0",
+      "status": "budget",
+      "expanded": 8192,
+      "length_xy": null
+    },
+    {
+      "label": "approach806_surface0_to_826_surface0",
+      "status": "budget",
+      "expanded": 8192,
+      "length_xy": null
+    },
+    {
+      "label": "upper814_to_818_surface0",
+      "status": "no_route",
+      "expanded": 5,
+      "length_xy": null
+    },
+    {
+      "label": "upper814_to_818_surface1",
+      "status": "success",
+      "expanded": 2,
+      "length_xy": 25.00000000000523
+    },
+    {
+      "label": "upper814_to_819_surface0",
+      "status": "no_route",
+      "expanded": 5,
+      "length_xy": null
+    },
+    {
+      "label": "upper814_to_819_surface1",
+      "status": "success",
+      "expanded": 3,
+      "length_xy": 31.250000000052108
+    },
+    {
+      "label": "upper814_to_821_surface0",
+      "status": "success",
+      "expanded": 3,
+      "length_xy": 43.76239508941481
+    },
+    {
+      "label": "upper814_to_824_surface0",
+      "status": "no_route",
+      "expanded": 5,
+      "length_xy": null
+    },
+    {
+      "label": "upper814_to_826_surface0",
+      "status": "no_route",
+      "expanded": 5,
+      "length_xy": null
+    }
+  ],
+  "inputs": {
+    "baseline_report_sha256": "6376bf7486c8f4cc97f4e394c55141bdaa48a4ff273e3c1cc222624f8476bf6f",
+    "continuity_report_sha256": "727f62b360a9311d4ba745d2786da10f3b26261994cc43ec06e5847b5ac8ac12"
+  },
+  "platform_note": "Linux replay with compiled additive diagnostic library, actual Windows-captured source/data/guide. This is not execution in the Windows process."
+}

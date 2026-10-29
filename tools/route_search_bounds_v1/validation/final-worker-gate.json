@@ -1,0 +1,12 @@
+{
+  "status": "passed",
+  "test": "internal scoped error is not accepted as final completed real-case result",
+  "test_method": "focused gate test with controlled route_run outcomes; asset/source preflight used real isolated fixture",
+  "error": "Candidate did not finish with a verified route or a scoped road-connectivity result: road_scope_unconnected",
+  "failure_evidence_retained": true,
+  "worker_sha256": "14ce602d03e55ca34b4310720dbd41928da0ebf93b9db5e3004a85bbbac7d638",
+  "known_routes_match_current_source_hashes": {
+    "navmesh.py": "40803d4157b3782f230d35eb577c4e1933fb282398a8dc912bcb08444b0533a6",
+    "road_corridor.py": "2a46cd428801ba16bf60ebcf781c9097492dc5b8bdeda19eaea8399f034c4f0e"
+  }
+}

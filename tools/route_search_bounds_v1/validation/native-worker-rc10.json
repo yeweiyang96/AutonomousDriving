@@ -1,0 +1,159 @@
+{
+  "status": "passed",
+  "checks": [
+    {
+      "name": "large_domain_preserves_legacy_path_and_filter",
+      "passed": true,
+      "details": [
+        {
+          "start": "ground_chain_start",
+          "goal": "ground_chain_goal",
+          "return_code": 0,
+          "expanded": 3
+        },
+        {
+          "start": "ring_start",
+          "goal": "ring_goal",
+          "return_code": 0,
+          "expanded": 6
+        },
+        {
+          "start": "lower",
+          "goal": "lower",
+          "return_code": 0,
+          "expanded": 0
+        },
+        {
+          "start": "lower",
+          "goal": "upper",
+          "return_code": 10,
+          "expanded": 7
+        },
+        {
+          "start": "water_chain_start",
+          "goal": "water_chain_goal",
+          "return_code": 10,
+          "expanded": 1
+        },
+        {
+          "start": "offmesh_start",
+          "goal": "offmesh_goal",
+          "return_code": 10,
+          "expanded": 1
+        },
+        {
+          "start": "water",
+          "goal": "lower",
+          "return_code": 3,
+          "expanded": 0
+        },
+        {
+          "start": "multilevel",
+          "goal": "lower",
+          "return_code": 4,
+          "expanded": 0
+        }
+      ]
+    },
+    {
+      "name": "domain_is_scoped_and_final_length_guard_still_required",
+      "passed": true,
+      "details": {
+        "tight_domain": {
+          "return_code": 10,
+          "expanded": 1,
+          "count": 0,
+          "points": [],
+          "refs": [],
+          "budget_reason": {
+            "reason": 0,
+            "status": 0
+          }
+        },
+        "loose_domain_limit": 21,
+        "returned_length_xy": 24.14213562373095,
+        "final_policy_must_reject_over_limit": true
+      }
+    },
+    {
+      "name": "limits_cancel_and_failed_output",
+      "passed": true,
+      "details": {
+        "budget_zero": {
+          "return_code": 6,
+          "expanded": 0,
+          "count": 0,
+          "points": [],
+          "refs": [],
+          "budget_reason": {
+            "reason": 1,
+            "status": 536870912
+          }
+        },
+        "cancelled": {
+          "return_code": 7,
+          "expanded": 0,
+          "count": 0,
+          "points": [],
+          "refs": [],
+          "budget_reason": {
+            "reason": 0,
+            "status": 0
+          }
+        },
+        "output_capacity_one": {
+          "return_code": 6,
+          "expanded": 3,
+          "count": 0,
+          "points": [],
+          "refs": [],
+          "budget_reason": {
+            "reason": 4,
+            "status": 1073741840
+          }
+        }
+      }
+    },
+    {
+      "name": "invalid_arguments_rejected",
+      "passed": true,
+      "details": {
+        "cases": 12
+      }
+    },
+    {
+      "name": "legacy_behavior_restored_after_bounded_calls",
+      "passed": true,
+      "details": {
+        "same_path_points_refs_expansion_and_reason": true
+      }
+    },
+    {
+      "name": "symmetric_edge_and_self_exclusions_preserved",
+      "passed": true,
+      "details": {
+        "edges": [
+          {
+            "direction": "ground_chain_start -> ground_chain_goal",
+            "return_code": 8
+          },
+          {
+            "direction": "ground_chain_goal -> ground_chain_start",
+            "return_code": 8
+          }
+        ],
+        "self": {
+          "return_code": 8,
+          "expanded": 0,
+          "count": 0,
+          "points": [],
+          "refs": [],
+          "budget_reason": {
+            "reason": 0,
+            "status": 0
+          }
+        }
+      }
+    }
+  ]
+}

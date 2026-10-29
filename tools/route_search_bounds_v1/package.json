@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "version": "route-search-bounds-v1",
+  "payload_sha256": {
+    "diagnostic_fixture.cpp": "a9372190be9903ec7b44c9e1b7776477ead5f28f0e80d769bcfd123ba68f781c",
+    "nav_diagnostics.py": "213b7d40702231657253228d7c51499ea57d528e85ff8660ab19dd8c41d4600d",
+    "navmesh.py": "40803d4157b3782f230d35eb577c4e1933fb282398a8dc912bcb08444b0533a6",
+    "path_search_bounds_v3.inc": "40a8ae63ef13915a9dc30c9f18f2e019feb88606fbe568a003517e4290a7a0b2",
+    "reference-last-plan.json": "b890e3b4d3eca9af53a4ca19a974cccd977cad370c70836967ea29f80b7a06a2",
+    "regression-assets.json": "3517f7d3cb1eb8497c9918d08e49f55c89efb99aca6d6b0322a87cdbdcfd7388",
+    "road_corridor.py": "2a46cd428801ba16bf60ebcf781c9097492dc5b8bdeda19eaea8399f034c4f0e"
+  },
+  "support_sha256": {
+    "install_route_search_bounds.py": "d3f62920179dddb05d46247360e36a95640af635549329eee21034e68ee81cfb",
+    "verify_route_search_bounds.py": "14ce602d03e55ca34b4310720dbd41928da0ebf93b9db5e3004a85bbbac7d638",
+    "verify_surface_diagnostics.py": "46daa0738f23dc27bad711aa6c14d6b9d9f5fd08ed14d9893e3f9376c9d7847a",
+    "windows_build.py": "172b6efd1c82b5d87845b22042d0242a578fa51a252eed72ec70fe6152480620"
+  },
+  "release_scope": "General bounded road search; no tile repair or swimming; complete real-case Windows verification required before activation",
+  "windows_execution_performed_here": false
+}

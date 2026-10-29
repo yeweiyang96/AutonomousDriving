@@ -1,0 +1,122 @@
+{
+  "schema": 1,
+  "purpose": "Feasibility of recovering the current local crossing through surface-layer selection",
+  "data_scope": {
+    "map": 0,
+    "tile": [
+      52,
+      30
+    ],
+    "tile_sha256": "13aac3fbb3bdd7782c1bd76f31f52d63dbb6d5713825ae3cc87d56292508531d",
+    "new_report_sha256": "5a7b4b291e89fab5e67407b50637a6b4b195eb606c807049daaaa4e7321d2ace",
+    "new_and_previous_local_mesh_tile_bytes_match": true
+  },
+  "upper_surface_component": {
+    "poly_keys": [
+      [
+        15,
+        9,
+        0,
+        1860
+      ],
+      [
+        15,
+        9,
+        0,
+        1861
+      ],
+      [
+        15,
+        9,
+        0,
+        1867
+      ],
+      [
+        15,
+        9,
+        0,
+        1885
+      ],
+      [
+        15,
+        9,
+        0,
+        1886
+      ]
+    ],
+    "node_count": 5,
+    "outgoing_links_outside_component": 0,
+    "all_flags": 1,
+    "all_area": 11,
+    "all_poly_type": 0,
+    "physical_kind": "UNKNOWN",
+    "world_bounds_north": [
+      -10871.4658203,
+      -10859.19921875
+    ],
+    "world_bounds_west": [
+      597.599975586,
+      658.399963379
+    ],
+    "vertex_height_range": [
+      38.1901779175,
+      40.856842041
+    ]
+  },
+  "current_selected_pair": {
+    "start_poly_key": [
+      15,
+      9,
+      0,
+      1862
+    ],
+    "goal_poly_key": [
+      15,
+      9,
+      0,
+      1908
+    ],
+    "reference_length_xy": 56.33662769285665,
+    "recorded_start": [
+      -10863.542,
+      609.375,
+      31.52351188659668
+    ],
+    "recorded_goal": [
+      -10865.625,
+      665.625,
+      31.1671085357666
+    ]
+  },
+  "bounded_connectivity": {
+    "rectangle_north": [
+      -10900,
+      -10820
+    ],
+    "rectangle_west": [
+      580,
+      720
+    ],
+    "polygon_selection": "Every polygon whose XY bounding box intersects rectangle; conservative superset of any path wholly inside rectangle",
+    "contains_24_yard_buffer_around_recorded_local_reference": true,
+    "filtered_reachable_polygons_from_current_start": 40,
+    "filtered_reaches_current_goal": false,
+    "ignore_tags_reachable_polygons": 175,
+    "ignore_tags_reaches_current_goal": true,
+    "missing_neighbor_records_during_bounded_traversal": 0,
+    "same_results_from_fallback_start_poly1868": true
+  },
+  "conclusions": [
+    "No choice of an upper isolated candidate creates a connected local walking crossing in the current serialized navmesh.",
+    "No all-walk graph connection lies wholly inside the containing rectangle, hence none inside the 24-yard local reference corridor.",
+    "A walkable connection exists in the larger 46-tile loaded graph; the local disconnection is not global disconnection.",
+    "A navigation water tag at z31.5235 and isolated upper surfaces do not identify their true physical kind or the faulty generation stage."
+  ],
+  "next_code_change": "General bounded corridor connectivity and exact-version cache in local planning, followed by bounded coarse-road reroute on proved unavailable corridor edges; generation fixes must retain source-geometry evidence and batch acceptance.",
+  "source_reports": [
+    "westfall_route_repro/mesh_analysis/local-mesh.json",
+    "westfall_route_repro/mesh_analysis/topology.json",
+    "westfall_route_repro/mesh_analysis/diagnosis-summary.json",
+    "route_surface_case/case_4c68108b/report.json"
+  ]
+}

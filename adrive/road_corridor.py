@@ -1,4 +1,4 @@
-"""Bounded forward road following using the unchanged native path API.
+"""Forward road following with conservative native length-domain queries.
 
 Guide vertices are soft preferences. Every emitted segment comes from a
 complete native query; XY corridor checks never create a walking segment.
@@ -202,10 +202,15 @@ def follow_guide(mesh, start, goal, guide, max_expansions=500000, *, trace=None,
                                               'expanded_before': expanded, 'plan_budget': max_expansions}
                         queries += 1
                         try:
-                            parts, count = mesh.path(current, target, budget)
+                            # The existing final length check applies to every
+                            # guide connection, including endpoint access.
+                            length_limit = detour_metrics(reference, reference)['length_limit_xy']
+                            parts, count = mesh.path(current, target, budget,
+                                                     max_length_xy=length_limit)
                             expanded += count
                             points = list(Route(current, target, tuple(parts), count).points)
-                            metadata = {'status': 'native_complete', 'native_expanded': count}
+                            metadata = {'status': 'native_complete', 'native_expanded': count,
+                                        'search_length_limit_xy': length_limit}
                             lengths = detour_metrics(points, reference)
                             metadata.update(lengths)
                             if lengths['excessive_detour']:
@@ -217,9 +222,13 @@ def follow_guide(mesh, start, goal, guide, max_expansions=500000, *, trace=None,
                             attempt_cache[key] = (parts, target, metadata)
                         except PlanningError as exc:
                             expanded += getattr(exc, 'expanded', 0)
-                            if exc.code not in ('no_route', 'navmesh_outside', 'navmesh_height', 'budget', 'blocked_navmesh'):
+                            if exc.code not in ('no_route', 'road_scope_unconnected', 'navmesh_outside', 'navmesh_height', 'budget', 'blocked_navmesh'):
                                 raise
-                            attempt_cache[key] = (None, target, {'status': exc.code, 'native_expanded': getattr(exc, 'expanded', 0)})
+                            attempt_cache[key] = (None, target, {'status': exc.code,
+                                'native_expanded': getattr(exc, 'expanded', 0),
+                                'search_length_limit_xy': length_limit,
+                                'native_debug': getattr(exc, 'native_debug', None),
+                                'global_unreachable_proven': False})
                         except ValueError as exc:
                             attempt_cache[key] = (None, target, {'status': 'metric_limit', 'detail': str(exc)})
                     parts, resolved_target, info = attempt_cache[key]
@@ -283,7 +292,12 @@ def follow_guide(mesh, start, goal, guide, max_expansions=500000, *, trace=None,
                                   'plan_budget': max_expansions}
             queries += 1
             try:
-                replacement, count = mesh.path(prior_point, target, min(policy.local_budget, max_expansions-expanded))
+                # An accepted reconnect must be shorter than old_xy - .5.
+                # Use that existing threshold as a conservative search domain.
+                reconnect_limit = old_xy - .5
+                replacement, count = mesh.path(prior_point, target,
+                                               min(policy.local_budget, max_expansions-expanded),
+                                               max_length_xy=reconnect_limit)
                 expanded += count
                 new_points = list(Route(prior_point, target, tuple(replacement)).points)
                 reference = [prior_point, *anchors[prior_index+1:next_index+1]]
@@ -299,7 +313,7 @@ def follow_guide(mesh, start, goal, guide, max_expansions=500000, *, trace=None,
                               'accepted': better, 'corridor_width': width, 'replaced_length_xy': old_xy,
                               'replaced_chunk_count': len(history)-history_index+1,
                               'replaced_length_3d': old_3d, 'replacement_length_3d': new_3d,
-                              'native_expanded': count, **metrics})
+                              'native_expanded': count, 'search_length_limit_xy': reconnect_limit, **metrics})
                 if better:
                     # A merged chunk must not erase every bridge-approach
                     # checkpoint. Retain only real native polygon-boundary
@@ -324,9 +338,14 @@ def follow_guide(mesh, start, goal, guide, max_expansions=500000, *, trace=None,
                     break
             except PlanningError as exc:
                 expanded += getattr(exc, 'expanded', 0)
-                if exc.code not in ('no_route', 'navmesh_outside', 'navmesh_height', 'budget', 'blocked_navmesh'):
+                if exc.code not in ('no_route', 'road_scope_unconnected', 'navmesh_outside', 'navmesh_height', 'budget', 'blocked_navmesh'):
                     raise
-                trace.append({'mode': 'native_reconnect', 'accepted': False, 'status': exc.code})
+                trace.append({'mode': 'native_reconnect', 'accepted': False, 'status': exc.code,
+                              'from_anchor': prior_index, 'to_anchor': next_index,
+                              'native_expanded': getattr(exc, 'expanded', 0),
+                              'search_length_limit_xy': reconnect_limit,
+                              'native_debug': getattr(exc, 'native_debug', None),
+                              'global_unreachable_proven': False})
             except ValueError as exc:
                 trace.append({'mode': 'native_reconnect', 'accepted': False, 'status': 'metric_limit', 'detail': str(exc)})
         history.append((index, current, len(output), accepted_width))

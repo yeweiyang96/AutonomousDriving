@@ -208,3 +208,5 @@ API int ad_path(void* handle,const float* start,const float* goal,int budget,Can
 }
 
 #include "surface_diagnostics_v2.inc"
+
+#include "path_search_bounds_v3.inc"

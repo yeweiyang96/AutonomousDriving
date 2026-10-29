@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "scope": "Temporary filesystem checks using byte-exact current source/tile snapshots, fake DLL bytes, and mocked subprocess verification. No Windows build or real native query performed by this test.",
+  "checks": [
+    {
+      "name": "BOM_CRLF_baselines_normalize_without_allowing_content_changes",
+      "passed": true
+    },
+    {
+      "name": "CAS_preserves_concurrent_edit",
+      "passed": true
+    },
+    {
+      "name": "candidate_source_changes_cannot_differ_from_tested_installed_bytes",
+      "passed": true
+    },
+    {
+      "name": "expanded_radius_assets_are_manifest_bound_and_rechecked_before_commit",
+      "passed": true
+    },
+    {
+      "name": "preflight_matches_post_surface_install_and_transaction_changes_only_designated_code_and_DLL_pointer",
+      "passed": true
+    },
+    {
+      "name": "post_replace_failure_restores_exact_old_code_and_manifest",
+      "passed": true
+    },
+    {
+      "name": "rollback_preserves_later_user_edit_and_reports_partial",
+      "passed": true
+    },
+    {
+      "name": "already_installed_native_include_is_not_overwritten",
+      "passed": true
+    },
+    {
+      "name": "changed_navigation_data_identity_refuses_fixed_case_validation",
+      "passed": true
+    }
+  ],
+  "all_passed": true,
+  "installer_sha256": "d3f62920179dddb05d46247360e36a95640af635549329eee21034e68ee81cfb"
+}

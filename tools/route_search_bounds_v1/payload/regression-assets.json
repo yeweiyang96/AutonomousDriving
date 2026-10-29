@@ -1,0 +1,475 @@
+{
+  "schema": 1,
+  "navigation_identity": "6917e7ff881554b7",
+  "reference_plan_sha256": "b890e3b4d3eca9af53a4ca19a974cccd977cad370c70836967ea29f80b7a06a2",
+  "maps": [
+    {
+      "path": "1.60.1.70658-20261028T203512Z/mmaps/0000.mmap",
+      "bytes": 40,
+      "sha256": "11f29fcf6940331baab4221832dd3c60cafd7b8946d3f7503bbfaffc66695226",
+      "c": 0
+    }
+  ],
+  "tiles": [
+    {
+      "path": "1.60.1.70658-20261028T203512Z/mmaps/0000_48_30.mmtile",
+      "bytes": 2210536,
+      "sha256": "9012c69529815a6a8dec918487db3b71aec0ae3781914dd057551a085bdd1f61",
+      "c": 0,
+      "row": 48,
+      "col": 30,
+      "mesh_x": 15,
+      "mesh_y": 13
+    },
+    {
+      "path": "1.60.1.70658-20261028T203512Z/mmaps/0000_48_31.mmtile",
+      "bytes": 1417260,
+      "sha256": "88001fb075f3e43e2b55444693ea9c905a688e0293373c65809a166738a63ce6",
+      "c": 0,
+      "row": 48,
+      "col": 31,
+      "mesh_x": 14,
+      "mesh_y": 13
+    },
+    {
+      "path": "1.60.1.70658-20261028T203512Z/mmaps/0000_48_32.mmtile",
+      "bytes": 1256884,
+      "sha256": "a46c2aa4fc0aa8f3eda05ed5687838c6da58b598f89ca43b93dfb0110a40c739",
+      "c": 0,
+      "row": 48,
+      "col": 32,
+      "mesh_x": 13,
+      "mesh_y": 13
+    },
+    {
+      "path": "1.60.1.70658-20261028T203512Z/mmaps/0000_48_33.mmtile",
+      "bytes": 945052,
+      "sha256": "cf0df1beea064fdcacfdb8289571243b9848da7a956d37a5c96af1857dec753a",
+      "c": 0,
+      "row": 48,
+      "col": 33,
+      "mesh_x": 12,
+      "mesh_y": 13
+    },
+    {
+      "path": "1.60.1.70658-20261028T203512Z/mmaps/0000_48_34.mmtile",
+      "bytes": 1151300,
+      "sha256": "f9ee42f36096fd15f94d13f1fff9df2fdb44b04afb1da94cf0b6a7d1d8cc5e07",
+      "c": 0,
+      "row": 48,
+      "col": 34,
+      "mesh_x": 11,
+      "mesh_y": 13
+    },
+    {
+      "path": "1.60.1.70658-20261028T203512Z/mmaps/0000_48_35.mmtile",
+      "bytes": 1179648,
+      "sha256": "d4a1950711047f7fb379397b0cd8be943a2b2352b182414217f25c193add4e9d",
+      "c": 0,
+      "row": 48,
+      "col": 35,
+      "mesh_x": 10,
+      "mesh_y": 13
+    },
+    {
+      "path": "1.60.1.70658-20261028T203512Z/mmaps/0000_48_36.mmtile",
+      "bytes": 1255288,
+      "sha256": "072a63c970e5cf64f77670d09e1a5ed092614086b90d72197889b7408cceeb60",
+      "c": 0,
+      "row": 48,
+      "col": 36,
+      "mesh_x": 9,
+      "mesh_y": 13
+    },
+    {
+      "path": "1.60.1.70658-20261028T203512Z/mmaps/0000_49_30.mmtile",
+      "bytes": 1117520,
+      "sha256": "115e52fa4aade5fbf757a8276141217f1aa8c0ddb1f67cb557138190e9665df4",
+      "c": 0,
+      "row": 49,
+      "col": 30,
+      "mesh_x": 15,
+      "mesh_y": 12
+    },
+    {
+      "path": "1.60.1.70658-20261028T203512Z/mmaps/0000_49_31.mmtile",
+      "bytes": 1140828,
+      "sha256": "608bea8bb6a268c922b90923109b10f8efa4aee00a2cdb5131c6ad7dc474e429",
+      "c": 0,
+      "row": 49,
+      "col": 31,
+      "mesh_x": 14,
+      "mesh_y": 12
+    },
+    {
+      "path": "1.60.1.70658-20261028T203512Z/mmaps/0000_49_32.mmtile",
+      "bytes": 1081168,
+      "sha256": "87c3039aacca9e5aa0e2c10619945fb60e00beda3e2e7dc77ee90b36403e8b66",
+      "c": 0,
+      "row": 49,
+      "col": 32,
+      "mesh_x": 13,
+      "mesh_y": 12
+    },
+    {
+      "path": "1.60.1.70658-20261028T203512Z/mmaps/0000_49_33.mmtile",
+      "bytes": 923280,
+      "sha256": "fcd53183d656eb895ca360734e3798bd29ad5b255e4b86d308b644f454e1c595",
+      "c": 0,
+      "row": 49,
+      "col": 33,
+      "mesh_x": 12,
+      "mesh_y": 12
+    },
+    {
+      "path": "1.60.1.70658-20261028T203512Z/mmaps/0000_49_34.mmtile",
+      "bytes": 1090716,
+      "sha256": "6cdcb1b6bb4384778b2a2b2bc115a07aab840e79f2780e1cf38f0111f5f574d8",
+      "c": 0,
+      "row": 49,
+      "col": 34,
+      "mesh_x": 11,
+      "mesh_y": 12
+    },
+    {
+      "path": "1.60.1.70658-20261028T203512Z/mmaps/0000_49_35.mmtile",
+      "bytes": 1132908,
+      "sha256": "81fb70658118ff692ea3600577674542ee8e953b9129c37c85556e5631aae553",
+      "c": 0,
+      "row": 49,
+      "col": 35,
+      "mesh_x": 10,
+      "mesh_y": 12
+    },
+    {
+      "path": "1.60.1.70658-20261028T203512Z/mmaps/0000_49_36.mmtile",
+      "bytes": 935060,
+      "sha256": "c71fdee9c7ef59dfe212085e1b7a7ac2382ae37738181d813367f5dd87ca4b99",
+      "c": 0,
+      "row": 49,
+      "col": 36,
+      "mesh_x": 9,
+      "mesh_y": 12
+    },
+    {
+      "path": "1.60.1.70658-20261028T203512Z/mmaps/0000_50_30.mmtile",
+      "bytes": 872108,
+      "sha256": "bc9c9bdb64b9e75aaa1aea37df0858f5f40d1716acbc1409ed93b38c427893eb",
+      "c": 0,
+      "row": 50,
+      "col": 30,
+      "mesh_x": 15,
+      "mesh_y": 11
+    },
+    {
+      "path": "1.60.1.70658-20261028T203512Z/mmaps/0000_50_31.mmtile",
+      "bytes": 951284,
+      "sha256": "7df825c6ea1f50e9cbdb97f5381b04b7a31fb44e497eb8bc7ba2195e6cedb5cb",
+      "c": 0,
+      "row": 50,
+      "col": 31,
+      "mesh_x": 14,
+      "mesh_y": 11
+    },
+    {
+      "path": "1.60.1.70658-20261028T203512Z/mmaps/0000_50_32.mmtile",
+      "bytes": 803972,
+      "sha256": "0ae228bc4ee8748fb93718206258655e9fdc68d7b145ebe3c2cbc7aec5c2f73d",
+      "c": 0,
+      "row": 50,
+      "col": 32,
+      "mesh_x": 13,
+      "mesh_y": 11
+    },
+    {
+      "path": "1.60.1.70658-20261028T203512Z/mmaps/0000_50_33.mmtile",
+      "bytes": 675296,
+      "sha256": "68c8d764acd38e3afa5435dfd26cc2c81ddcfaa226a6581353bd72eb50e5f9b8",
+      "c": 0,
+      "row": 50,
+      "col": 33,
+      "mesh_x": 12,
+      "mesh_y": 11
+    },
+    {
+      "path": "repairs/bridge-0000-50-34-20261029T012545Z-53263d6f/0000_50_34.mmtile",
+      "bytes": 888768,
+      "sha256": "74dd28d4d559518bca84b678ac3fb3ccd5ba294c8ab65bebcede927acc46df1c",
+      "c": 0,
+      "row": 50,
+      "col": 34,
+      "mesh_x": 11,
+      "mesh_y": 11
+    },
+    {
+      "path": "1.60.1.70658-20261028T203512Z/mmaps/0000_50_35.mmtile",
+      "bytes": 1007408,
+      "sha256": "f4fea35c469950cc98bc6d11ca342fc21f9bcc80fa22a92720635264d1bbccce",
+      "c": 0,
+      "row": 50,
+      "col": 35,
+      "mesh_x": 10,
+      "mesh_y": 11
+    },
+    {
+      "path": "1.60.1.70658-20261028T203512Z/mmaps/0000_50_36.mmtile",
+      "bytes": 1085976,
+      "sha256": "5fe25ba8c9373af569c4692cf4a564cdcba823cc70ff079295d3d8cdc88e8138",
+      "c": 0,
+      "row": 50,
+      "col": 36,
+      "mesh_x": 9,
+      "mesh_y": 11
+    },
+    {
+      "path": "1.60.1.70658-20261028T203512Z/mmaps/0000_51_28.mmtile",
+      "bytes": 621384,
+      "sha256": "5ebef83974bf04d100fbcdd1fa8251af9c4ad182aca1ecd4f2f1601adf76a0d1",
+      "c": 0,
+      "row": 51,
+      "col": 28,
+      "mesh_x": 17,
+      "mesh_y": 10
+    },
+    {
+      "path": "1.60.1.70658-20261028T203512Z/mmaps/0000_51_29.mmtile",
+      "bytes": 487860,
+      "sha256": "b3b8d82b1bd04896d490471f09df5e78103b8945bde9c67402b369eb7bbbe973",
+      "c": 0,
+      "row": 51,
+      "col": 29,
+      "mesh_x": 16,
+      "mesh_y": 10
+    },
+    {
+      "path": "1.60.1.70658-20261028T203512Z/mmaps/0000_51_30.mmtile",
+      "bytes": 550172,
+      "sha256": "ced0fe2973ccc39b4f19fe2bc394d0ab02eba52a27befc0af2fa899357d13e70",
+      "c": 0,
+      "row": 51,
+      "col": 30,
+      "mesh_x": 15,
+      "mesh_y": 10
+    },
+    {
+      "path": "1.60.1.70658-20261028T203512Z/mmaps/0000_51_31.mmtile",
+      "bytes": 852636,
+      "sha256": "bbb102f1e5560b770c73700645ce824d1e37dff2a1c9b4f8c998f036bb8c1a87",
+      "c": 0,
+      "row": 51,
+      "col": 31,
+      "mesh_x": 14,
+      "mesh_y": 10
+    },
+    {
+      "path": "1.60.1.70658-20261028T203512Z/mmaps/0000_51_32.mmtile",
+      "bytes": 1187172,
+      "sha256": "9bf107eb61c02a79aafb135e22a6a23ebc30c7779b81d2c1cb0c096981fa1ff4",
+      "c": 0,
+      "row": 51,
+      "col": 32,
+      "mesh_x": 13,
+      "mesh_y": 10
+    },
+    {
+      "path": "1.60.1.70658-20261028T203512Z/mmaps/0000_51_33.mmtile",
+      "bytes": 971148,
+      "sha256": "3581469932e50f42e1d9bf91bc8b139c33740bddab1a659c512940365df1fc54",
+      "c": 0,
+      "row": 51,
+      "col": 33,
+      "mesh_x": 12,
+      "mesh_y": 10
+    },
+    {
+      "path": "1.60.1.70658-20261028T203512Z/mmaps/0000_51_34.mmtile",
+      "bytes": 1630484,
+      "sha256": "9aef32c41b7042e4150f9ca3ffce222930ff0d9ccd28ec18421141157d732469",
+      "c": 0,
+      "row": 51,
+      "col": 34,
+      "mesh_x": 11,
+      "mesh_y": 10
+    },
+    {
+      "path": "1.60.1.70658-20261028T203512Z/mmaps/0000_51_35.mmtile",
+      "bytes": 1359336,
+      "sha256": "15a29886169197bf4ac54ce472887e8bcff4d45475c29be260540e7bfeb429fb",
+      "c": 0,
+      "row": 51,
+      "col": 35,
+      "mesh_x": 10,
+      "mesh_y": 10
+    },
+    {
+      "path": "1.60.1.70658-20261028T203512Z/mmaps/0000_51_36.mmtile",
+      "bytes": 1406520,
+      "sha256": "3637af5430e8925732f5006e8dd17f06703d3ad118d7f6a4e836ecc32aed7dad",
+      "c": 0,
+      "row": 51,
+      "col": 36,
+      "mesh_x": 9,
+      "mesh_y": 10
+    },
+    {
+      "path": "1.60.1.70658-20261028T203512Z/mmaps/0000_52_28.mmtile",
+      "bytes": 557620,
+      "sha256": "ae755c1c979dbff926f4ecdd6da8f66ef60d4ca3d79c376fd0cfb2eee6780656",
+      "c": 0,
+      "row": 52,
+      "col": 28,
+      "mesh_x": 17,
+      "mesh_y": 9
+    },
+    {
+      "path": "1.60.1.70658-20261028T203512Z/mmaps/0000_52_29.mmtile",
+      "bytes": 890824,
+      "sha256": "b9ce956a2ed50c2e404563ae49951ba610355fa4b3122c4552dd007828a93903",
+      "c": 0,
+      "row": 52,
+      "col": 29,
+      "mesh_x": 16,
+      "mesh_y": 9
+    },
+    {
+      "path": "1.60.1.70658-20261028T203512Z/mmaps/0000_52_30.mmtile",
+      "bytes": 572580,
+      "sha256": "13aac3fbb3bdd7782c1bd76f31f52d63dbb6d5713825ae3cc87d56292508531d",
+      "c": 0,
+      "row": 52,
+      "col": 30,
+      "mesh_x": 15,
+      "mesh_y": 9
+    },
+    {
+      "path": "1.60.1.70658-20261028T203512Z/mmaps/0000_52_31.mmtile",
+      "bytes": 1050624,
+      "sha256": "2ab855d47cdff9b6b08b1459a7019591724ba538b30a2028dbe6228b1abea004",
+      "c": 0,
+      "row": 52,
+      "col": 31,
+      "mesh_x": 14,
+      "mesh_y": 9
+    },
+    {
+      "path": "1.60.1.70658-20261028T203512Z/mmaps/0000_52_32.mmtile",
+      "bytes": 1357888,
+      "sha256": "6677f424ab6fa3ff8a0878113dda47916bbea92305f2d2d1278db61a2349e0fb",
+      "c": 0,
+      "row": 52,
+      "col": 32,
+      "mesh_x": 13,
+      "mesh_y": 9
+    },
+    {
+      "path": "1.60.1.70658-20261028T203512Z/mmaps/0000_52_33.mmtile",
+      "bytes": 1244468,
+      "sha256": "4c638d1fe4387dd5a0723faefb86754443bef267016acc1122ee5bb0061a331f",
+      "c": 0,
+      "row": 52,
+      "col": 33,
+      "mesh_x": 12,
+      "mesh_y": 9
+    },
+    {
+      "path": "1.60.1.70658-20261028T203512Z/mmaps/0000_52_34.mmtile",
+      "bytes": 1268960,
+      "sha256": "257a8dd0fb0cdbe9f55a25618525cb750d93f8489539fce45063a4c0fdc7c0c4",
+      "c": 0,
+      "row": 52,
+      "col": 34,
+      "mesh_x": 11,
+      "mesh_y": 9
+    },
+    {
+      "path": "1.60.1.70658-20261028T203512Z/mmaps/0000_52_35.mmtile",
+      "bytes": 1939612,
+      "sha256": "d861c7f2af162434e90406eff553a438ebd6059857cf660e22ef6b2e12fd67b9",
+      "c": 0,
+      "row": 52,
+      "col": 35,
+      "mesh_x": 10,
+      "mesh_y": 9
+    },
+    {
+      "path": "1.60.1.70658-20261028T203512Z/mmaps/0000_53_28.mmtile",
+      "bytes": 448948,
+      "sha256": "a9b68b91694203aa224e89d414c5afe24caca553d5720e9e7918ce5dde8de09a",
+      "c": 0,
+      "row": 53,
+      "col": 28,
+      "mesh_x": 17,
+      "mesh_y": 8
+    },
+    {
+      "path": "1.60.1.70658-20261028T203512Z/mmaps/0000_53_29.mmtile",
+      "bytes": 1137632,
+      "sha256": "e8cbe27643327ddb9c6bfb7cc999a73f89287b39dd9af056cb7652fd3d1e80a6",
+      "c": 0,
+      "row": 53,
+      "col": 29,
+      "mesh_x": 16,
+      "mesh_y": 8
+    },
+    {
+      "path": "1.60.1.70658-20261028T203512Z/mmaps/0000_53_30.mmtile",
+      "bytes": 1297344,
+      "sha256": "cd9d2b4bb5970fb0789c5e24e21d40fe136800da9cc25081504a967076ecf73e",
+      "c": 0,
+      "row": 53,
+      "col": 30,
+      "mesh_x": 15,
+      "mesh_y": 8
+    },
+    {
+      "path": "1.60.1.70658-20261028T203512Z/mmaps/0000_53_31.mmtile",
+      "bytes": 1166520,
+      "sha256": "96a20844c93ed3d81eba6050a9db9ca6df6c32c3e47526ad9838aadf9accf7de",
+      "c": 0,
+      "row": 53,
+      "col": 31,
+      "mesh_x": 14,
+      "mesh_y": 8
+    },
+    {
+      "path": "1.60.1.70658-20261028T203512Z/mmaps/0000_53_32.mmtile",
+      "bytes": 1342908,
+      "sha256": "60a61fe00694ff82f6eeddb0848c60b4bd4230e8f5f081f2e2bff24aa209c17d",
+      "c": 0,
+      "row": 53,
+      "col": 32,
+      "mesh_x": 13,
+      "mesh_y": 8
+    },
+    {
+      "path": "1.60.1.70658-20261028T203512Z/mmaps/0000_53_33.mmtile",
+      "bytes": 1536936,
+      "sha256": "4892fda8be9fc52d898cec804666ca95687037e1f148443d3a0299d52597f034",
+      "c": 0,
+      "row": 53,
+      "col": 33,
+      "mesh_x": 12,
+      "mesh_y": 8
+    },
+    {
+      "path": "1.60.1.70658-20261028T203512Z/mmaps/0000_53_34.mmtile",
+      "bytes": 1351960,
+      "sha256": "e9e9f8bdcadc6b061d05c67b9a167276229a7cf3aa339a907325ebbcc8b70cde",
+      "c": 0,
+      "row": 53,
+      "col": 34,
+      "mesh_x": 11,
+      "mesh_y": 8
+    },
+    {
+      "path": "1.60.1.70658-20261028T203512Z/mmaps/0000_53_35.mmtile",
+      "bytes": 1254948,
+      "sha256": "2435f1f42144637cba83f97e71fad95c438ad7537c17de25c3752e115619a8ed",
+      "c": 0,
+      "row": 53,
+      "col": 35,
+      "mesh_x": 10,
+      "mesh_y": 8
+    }
+  ]
+}
