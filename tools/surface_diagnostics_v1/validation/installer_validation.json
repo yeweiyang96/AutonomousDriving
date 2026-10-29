@@ -1,0 +1,39 @@
+{
+  "scope": "Temporary-filesystem transaction tests with mocked verification worker. Windows metadata mismatch is synthetic; read-time mutation changes a real temporary file. No Windows build, native query, or production install ran.",
+  "checks": [
+    {
+      "name": "source_comparison_accepts_BOM_and_CRLF_only",
+      "passed": true
+    },
+    {
+      "name": "windows_path_and_handle_metadata_may_differ_but_are_each_stable",
+      "passed": true
+    },
+    {
+      "name": "real_file_change_during_read_is_rejected",
+      "passed": true
+    },
+    {
+      "name": "atomic_write_preserves_changed_destination",
+      "passed": true
+    },
+    {
+      "name": "transaction_success_changes_only_expected_files_and_library_pointer",
+      "passed": true
+    },
+    {
+      "name": "new_includes_and_module_written_before_bridge_and_manifest_last",
+      "passed": true
+    },
+    {
+      "name": "failure_after_replace_rolls_back_only_own_changes",
+      "passed": true
+    },
+    {
+      "name": "rollback_refuses_to_overwrite_later_user_edit",
+      "passed": true
+    }
+  ],
+  "all_passed": true,
+  "installer_sha256": "c2f912917881f0e98dc47480a1fb1a7ab66af594e03121ba4a4ee7f59ee9a557"
+}

@@ -1,0 +1,90 @@
+{
+  "schema": 1,
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 918,
+      "sha256": "9bb41c99ca61e03b2570ead5c12fa8ecd280500560b820e093131829fe534f26"
+    },
+    {
+      "path": "bridge.append.diff",
+      "bytes": 150,
+      "sha256": "2187fccb10a55663fc24b6388c065784080d7fc53f698d49ae05f6d6ce733cb8"
+    },
+    {
+      "path": "install_surface_diagnostics.py",
+      "bytes": 26316,
+      "sha256": "c2f912917881f0e98dc47480a1fb1a7ab66af594e03121ba4a4ee7f59ee9a557"
+    },
+    {
+      "path": "package.json",
+      "bytes": 806,
+      "sha256": "ac08259a83b0966bd8222b938b76457a0b7971a95906bd200e9e7fd27629d954"
+    },
+    {
+      "path": "payload/diagnostic_fixture.cpp",
+      "bytes": 7044,
+      "sha256": "a9372190be9903ec7b44c9e1b7776477ead5f28f0e80d769bcfd123ba68f781c"
+    },
+    {
+      "path": "payload/nav_diagnostics.py",
+      "bytes": 10504,
+      "sha256": "213b7d40702231657253228d7c51499ea57d528e85ff8660ab19dd8c41d4600d"
+    },
+    {
+      "path": "payload/surface_diagnostics_v2.h",
+      "bytes": 2325,
+      "sha256": "ea33ef4d772cc2a10ae1a0456fd1cfd803bd8e9dc3e89c830c14701c7e233f6e"
+    },
+    {
+      "path": "payload/surface_diagnostics_v2.inc",
+      "bytes": 13722,
+      "sha256": "72662ba9abea88e18d1d426ffbc62b82a3d74e3cb3e282523a3442c581367392"
+    },
+    {
+      "path": "surface_diagnostics_v1_guide.md",
+      "bytes": 9887,
+      "sha256": "124b19b976aa9b66e743f263714cfa6e4fa9c12c86aa6ecca281ceb025d12b6c"
+    },
+    {
+      "path": "validation/installer_validation.json",
+      "bytes": 1196,
+      "sha256": "dacf2f96d36b0e36990ef6e19482ead7568a2700eb1ed2abd26f544e60e55e73"
+    },
+    {
+      "path": "validation/linux-builds.json",
+      "bytes": 2809,
+      "sha256": "f2f6e0314cab33a84cc5fa319f13f1f8a5da8870a7ad87c70cf3b6596fbf068a"
+    },
+    {
+      "path": "validation/native-interface-validation.json",
+      "bytes": 24223,
+      "sha256": "14d99d0e7dab161bd9658d14e1306ccd27121c70f58c5c8ff7d16100baf53f2f"
+    },
+    {
+      "path": "validation/optimized-python-guard.json",
+      "bytes": 719,
+      "sha256": "47484d6ea4ea8cbcc50745d819a5e9c132a166266a4ca197e92a0606bc0f14c5"
+    },
+    {
+      "path": "validation/release-summary.json",
+      "bytes": 1404,
+      "sha256": "9f1cb5b97d24e1fb5994b6e2ebe1f0eadfb107705391fd3f7f552c58aab7b8b3"
+    },
+    {
+      "path": "validation/westfall-real-data.json",
+      "bytes": 11626,
+      "sha256": "1a046e1a971739efdd02967ad3f5bc0a26d60162740af3e85e4e21db42e94443"
+    },
+    {
+      "path": "verify_surface_diagnostics.py",
+      "bytes": 19543,
+      "sha256": "46daa0738f23dc27bad711aa6c14d6b9d9f5fd08ed14d9893e3f9376c9d7847a"
+    },
+    {
+      "path": "windows_build.py",
+      "bytes": 7524,
+      "sha256": "172b6efd1c82b5d87845b22042d0242a578fa51a252eed72ec70fe6152480620"
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "status": "failed",
+  "error": "RuntimeError: Validation requires assertions; run Python without -O or PYTHONOPTIMIZE.",
+  "traceback": "Traceback (most recent call last):\n  File \"/workspace/scratch/20239ebfbca8/surface_diagnostics_v1/package/verify_surface_diagnostics.py\", line 339, in main\n    report = run(args)\n             ^^^^^^^^^\n  File \"/workspace/scratch/20239ebfbca8/surface_diagnostics_v1/package/verify_surface_diagnostics.py\", line 90, in run\n    raise RuntimeError('Validation requires assertions; run Python without -O or PYTHONOPTIMIZE.')\nRuntimeError: Validation requires assertions; run Python without -O or PYTHONOPTIMIZE.\n",
+  "production_changes_performed": false
+}

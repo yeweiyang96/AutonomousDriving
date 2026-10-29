@@ -1,0 +1,8 @@
+--- a/native/navmesh/bridge.cpp
++++ b/native/navmesh/bridge.cpp
+@@ -206,3 +206,5 @@
+     }
+     return 0;
+ }
++
++#include "surface_diagnostics_v2.inc"

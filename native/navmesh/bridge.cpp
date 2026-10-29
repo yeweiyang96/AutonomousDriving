@@ -206,3 +206,5 @@ API int ad_path(void* handle,const float* start,const float* goal,int budget,Can
     }
     return 0;
 }
+
+#include "surface_diagnostics_v2.inc"

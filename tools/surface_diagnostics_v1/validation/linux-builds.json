@@ -1,0 +1,46 @@
+[
+  {
+    "command": [
+      "/usr/bin/g++",
+      "-std=c++17",
+      "-O2",
+      "-DDT_VIRTUAL_QUERYFILTER=1",
+      "-I/workspace/scratch/20239ebfbca8/surface_diagnostics_v1/build_linux/stage/third_party/detour/Include",
+      "-fPIC",
+      "-shared",
+      "/workspace/scratch/20239ebfbca8/surface_diagnostics_v1/build_linux/stage/native/navmesh/bridge.cpp",
+      "/workspace/scratch/20239ebfbca8/surface_diagnostics_v1/build_linux/stage/third_party/detour/Source/DetourAlloc.cpp",
+      "/workspace/scratch/20239ebfbca8/surface_diagnostics_v1/build_linux/stage/third_party/detour/Source/DetourAssert.cpp",
+      "/workspace/scratch/20239ebfbca8/surface_diagnostics_v1/build_linux/stage/third_party/detour/Source/DetourCommon.cpp",
+      "/workspace/scratch/20239ebfbca8/surface_diagnostics_v1/build_linux/stage/third_party/detour/Source/DetourNavMesh.cpp",
+      "/workspace/scratch/20239ebfbca8/surface_diagnostics_v1/build_linux/stage/third_party/detour/Source/DetourNavMeshBuilder.cpp",
+      "/workspace/scratch/20239ebfbca8/surface_diagnostics_v1/build_linux/stage/third_party/detour/Source/DetourNavMeshQuery.cpp",
+      "/workspace/scratch/20239ebfbca8/surface_diagnostics_v1/build_linux/stage/third_party/detour/Source/DetourNode.cpp",
+      "-o",
+      "/workspace/scratch/20239ebfbca8/surface_diagnostics_v1/build_linux/build/libadrive_navmesh.so"
+    ],
+    "returncode": 0,
+    "output": ""
+  },
+  {
+    "command": [
+      "/usr/bin/g++",
+      "-std=c++17",
+      "-O2",
+      "-DDT_VIRTUAL_QUERYFILTER=1",
+      "-I/workspace/scratch/20239ebfbca8/surface_diagnostics_v1/build_linux/stage/third_party/detour/Include",
+      "/workspace/scratch/20239ebfbca8/surface_diagnostics_v1/build_linux/stage/native/navmesh/diagnostic_fixture.cpp",
+      "/workspace/scratch/20239ebfbca8/surface_diagnostics_v1/build_linux/stage/third_party/detour/Source/DetourAlloc.cpp",
+      "/workspace/scratch/20239ebfbca8/surface_diagnostics_v1/build_linux/stage/third_party/detour/Source/DetourAssert.cpp",
+      "/workspace/scratch/20239ebfbca8/surface_diagnostics_v1/build_linux/stage/third_party/detour/Source/DetourCommon.cpp",
+      "/workspace/scratch/20239ebfbca8/surface_diagnostics_v1/build_linux/stage/third_party/detour/Source/DetourNavMesh.cpp",
+      "/workspace/scratch/20239ebfbca8/surface_diagnostics_v1/build_linux/stage/third_party/detour/Source/DetourNavMeshBuilder.cpp",
+      "/workspace/scratch/20239ebfbca8/surface_diagnostics_v1/build_linux/stage/third_party/detour/Source/DetourNavMeshQuery.cpp",
+      "/workspace/scratch/20239ebfbca8/surface_diagnostics_v1/build_linux/stage/third_party/detour/Source/DetourNode.cpp",
+      "-o",
+      "/workspace/scratch/20239ebfbca8/surface_diagnostics_v1/build_linux/build/diagnostic_fixture"
+    ],
+    "returncode": 0,
+    "output": ""
+  }
+]

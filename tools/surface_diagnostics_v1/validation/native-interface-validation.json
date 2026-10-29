@@ -1,0 +1,848 @@
+{
+  "schema": 1,
+  "status": "passed",
+  "scope": "Synthetic actual Detour fixtures; not a production route or whole-map validation.",
+  "dll": "/workspace/scratch/20239ebfbca8/surface_diagnostics_v1/build_linux/build/libadrive_navmesh.so",
+  "dll_sha256": "9f63504956b0a04618152ab0c00b6435604bbe433304901cb754fae8b5ea126f",
+  "baseline_dll": "/workspace/scratch/20239ebfbca8/westfall_route_repro/replay/fixture/native/libadrive_navmesh.so",
+  "baseline_dll_sha256": "cf921f698b6e3e2b9ead57ae24ec234abd89c5822d00e297c4751cdb6393f284",
+  "capabilities": {
+    "struct_size": 48,
+    "abi_version": 2,
+    "features": 3,
+    "poly_ref_bytes": 8,
+    "surface_record_size": 72,
+    "surface_summary_size": 48,
+    "reach_request_size": 40,
+    "reach_report_size": 80,
+    "walk_include_flags": 17,
+    "walk_exclude_flags": 14,
+    "path_node_capacity": 65535,
+    "reserved": 0
+  },
+  "checks": [
+    {
+      "name": "capability_layout_and_original_filter",
+      "passed": true,
+      "details": {
+        "struct_size": 48,
+        "abi_version": 2,
+        "features": 3,
+        "poly_ref_bytes": 8,
+        "surface_record_size": 72,
+        "surface_summary_size": 48,
+        "reach_request_size": 40,
+        "reach_report_size": 80,
+        "walk_include_flags": 17,
+        "walk_exclude_flags": 14,
+        "path_node_capacity": 65535,
+        "reserved": 0
+      }
+    },
+    {
+      "name": "multilevel_surfaces_and_loaded_only_disconnection",
+      "passed": true,
+      "details": {
+        "heights": [
+          0.0,
+          5.0
+        ],
+        "reachability": {
+          "struct_size": 80,
+          "abi_version": 2,
+          "result": 2,
+          "profile": 1,
+          "visited_polygons": 7,
+          "discovered_polygons": 7,
+          "link_checks": 16,
+          "loaded_tiles": 1,
+          "unresolved_external_edges": 0,
+          "filtered_links": 4,
+          "blocked_links": 0,
+          "scope": 1,
+          "start_ref": 4503599627370496,
+          "goal_ref": 4503599627370504,
+          "traversal_complete": 1,
+          "global_connectivity_known": 0,
+          "link_limit_reached": 0,
+          "reserved": 0,
+          "return_code": 0,
+          "result_name": "disconnected_in_loaded_graph",
+          "scope_name": "loaded_graph_only",
+          "profile_name": "walk",
+          "native_ref_context_only": true,
+          "meaning": "walk_filter_graph_reachability_only",
+          "complete_route_verified": false,
+          "swimming_authorized": false
+        }
+      }
+    },
+    {
+      "name": "water_zero_flags_and_equal_height_identities",
+      "passed": true,
+      "details": {
+        "water": [
+          {
+            "struct_size": 72,
+            "abi_version": 2,
+            "poly_ref": 4503599627370497,
+            "tile_x": 0,
+            "tile_y": 0,
+            "tile_layer": 0,
+            "poly_index": 1,
+            "north": 5.0,
+            "west": 15.0,
+            "height": 0.0,
+            "area": 9,
+            "flags": 4,
+            "poly_type": 0,
+            "walk_filter_pass": 0,
+            "blocked_self": 0,
+            "semantic_evidence": 1,
+            "reserved": 0,
+            "poly_ref_hex": "0x0010000000000001",
+            "native_ref_context_only": true,
+            "nav_area_label": "water_tag",
+            "physical_kind": "UNKNOWN",
+            "classification_evidence": "nav_tag_only",
+            "swimming_authorized": false
+          }
+        ],
+        "zero_flags": [
+          {
+            "struct_size": 72,
+            "abi_version": 2,
+            "poly_ref": 4503599627370505,
+            "tile_x": 0,
+            "tile_y": 0,
+            "tile_layer": 0,
+            "poly_index": 9,
+            "north": 5.0,
+            "west": 45.0,
+            "height": 0.0,
+            "area": 11,
+            "flags": 0,
+            "poly_type": 0,
+            "walk_filter_pass": 0,
+            "blocked_self": 0,
+            "semantic_evidence": 1,
+            "reserved": 0,
+            "poly_ref_hex": "0x0010000000000009",
+            "native_ref_context_only": true,
+            "nav_area_label": "ground_tag",
+            "physical_kind": "UNKNOWN",
+            "classification_evidence": "nav_tag_only",
+            "swimming_authorized": false
+          }
+        ],
+        "equal_height": [
+          {
+            "struct_size": 72,
+            "abi_version": 2,
+            "poly_ref": 4503599627370506,
+            "tile_x": 0,
+            "tile_y": 0,
+            "tile_layer": 0,
+            "poly_index": 10,
+            "north": 25.0,
+            "west": 45.0,
+            "height": 0.0,
+            "area": 11,
+            "flags": 1,
+            "poly_type": 0,
+            "walk_filter_pass": 1,
+            "blocked_self": 0,
+            "semantic_evidence": 1,
+            "reserved": 0,
+            "poly_ref_hex": "0x001000000000000a",
+            "native_ref_context_only": true,
+            "nav_area_label": "ground_tag",
+            "physical_kind": "UNKNOWN",
+            "classification_evidence": "nav_tag_only",
+            "swimming_authorized": false
+          },
+          {
+            "struct_size": 72,
+            "abi_version": 2,
+            "poly_ref": 4503599627370507,
+            "tile_x": 0,
+            "tile_y": 0,
+            "tile_layer": 0,
+            "poly_index": 11,
+            "north": 25.0,
+            "west": 45.0,
+            "height": 0.0,
+            "area": 9,
+            "flags": 4,
+            "poly_type": 0,
+            "walk_filter_pass": 0,
+            "blocked_self": 0,
+            "semantic_evidence": 1,
+            "reserved": 0,
+            "poly_ref_hex": "0x001000000000000b",
+            "native_ref_context_only": true,
+            "nav_area_label": "water_tag",
+            "physical_kind": "UNKNOWN",
+            "classification_evidence": "nav_tag_only",
+            "swimming_authorized": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "hole_does_not_snap_to_nearby_ground",
+      "passed": true,
+      "details": {
+        "return_code": 0,
+        "complete_for_loaded_graph": true,
+        "scope": "loaded_graph_only",
+        "global_coverage_known": false,
+        "summary": {
+          "struct_size": 48,
+          "abi_version": 2,
+          "total_surfaces": 0,
+          "written_surfaces": 0,
+          "loaded_tiles": 1,
+          "tiles_considered": 1,
+          "polygons_examined": 20,
+          "height_failures": 0,
+          "truncated": 0,
+          "scope": 1,
+          "complete_for_loaded_graph": 1,
+          "reserved": 0
+        },
+        "surfaces": []
+      }
+    },
+    {
+      "name": "all_33_loaded_layers_are_enumerated",
+      "passed": true,
+      "details": {
+        "count": 33,
+        "layers": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33
+        ]
+      }
+    },
+    {
+      "name": "surface_capacity_is_explicitly_incomplete",
+      "passed": true,
+      "details": {
+        "capacity_one": {
+          "struct_size": 48,
+          "abi_version": 2,
+          "total_surfaces": 2,
+          "written_surfaces": 1,
+          "loaded_tiles": 1,
+          "tiles_considered": 1,
+          "polygons_examined": 20,
+          "height_failures": 0,
+          "truncated": 1,
+          "scope": 1,
+          "complete_for_loaded_graph": 0,
+          "reserved": 0
+        },
+        "capacity_zero": {
+          "struct_size": 48,
+          "abi_version": 2,
+          "total_surfaces": 2,
+          "written_surfaces": 0,
+          "loaded_tiles": 1,
+          "tiles_considered": 1,
+          "polygons_examined": 20,
+          "height_failures": 0,
+          "truncated": 1,
+          "scope": 1,
+          "complete_for_loaded_graph": 0,
+          "reserved": 0
+        }
+      }
+    },
+    {
+      "name": "water_chain_is_topology_only_not_swimming",
+      "passed": true,
+      "details": {
+        "walk": {
+          "struct_size": 80,
+          "abi_version": 2,
+          "result": 2,
+          "profile": 1,
+          "visited_polygons": 1,
+          "discovered_polygons": 1,
+          "link_checks": 1,
+          "loaded_tiles": 1,
+          "unresolved_external_edges": 0,
+          "filtered_links": 1,
+          "blocked_links": 0,
+          "scope": 1,
+          "start_ref": 4503599627370508,
+          "goal_ref": 4503599627370510,
+          "traversal_complete": 1,
+          "global_connectivity_known": 0,
+          "link_limit_reached": 0,
+          "reserved": 0,
+          "return_code": 0,
+          "result_name": "disconnected_in_loaded_graph",
+          "scope_name": "loaded_graph_only",
+          "profile_name": "walk",
+          "native_ref_context_only": true,
+          "meaning": "walk_filter_graph_reachability_only",
+          "complete_route_verified": false,
+          "swimming_authorized": false
+        },
+        "tag_agnostic": {
+          "struct_size": 80,
+          "abi_version": 2,
+          "result": 1,
+          "profile": 2,
+          "visited_polygons": 2,
+          "discovered_polygons": 3,
+          "link_checks": 3,
+          "loaded_tiles": 1,
+          "unresolved_external_edges": 0,
+          "filtered_links": 0,
+          "blocked_links": 0,
+          "scope": 1,
+          "start_ref": 4503599627370508,
+          "goal_ref": 4503599627370510,
+          "traversal_complete": 0,
+          "global_connectivity_known": 0,
+          "link_limit_reached": 0,
+          "reserved": 0,
+          "return_code": 0,
+          "result_name": "reachable_in_loaded_graph",
+          "scope_name": "loaded_graph_only",
+          "profile_name": "tag_agnostic",
+          "native_ref_context_only": true,
+          "meaning": "tag_agnostic_topology_witness_only",
+          "complete_route_verified": false,
+          "swimming_authorized": false
+        },
+        "water_endpoint": {
+          "struct_size": 80,
+          "abi_version": 2,
+          "result": 5,
+          "profile": 1,
+          "visited_polygons": 0,
+          "discovered_polygons": 0,
+          "link_checks": 0,
+          "loaded_tiles": 1,
+          "unresolved_external_edges": 0,
+          "filtered_links": 0,
+          "blocked_links": 0,
+          "scope": 1,
+          "start_ref": 4503599627370497,
+          "goal_ref": 4503599627370497,
+          "traversal_complete": 0,
+          "global_connectivity_known": 0,
+          "link_limit_reached": 0,
+          "reserved": 0,
+          "return_code": 0,
+          "result_name": "endpoint_excluded",
+          "scope_name": "loaded_graph_only",
+          "profile_name": "walk",
+          "native_ref_context_only": true,
+          "meaning": "walk_filter_graph_reachability_only",
+          "complete_route_verified": false,
+          "swimming_authorized": false
+        }
+      }
+    },
+    {
+      "name": "offmesh_is_excluded_in_both_profiles",
+      "passed": true,
+      "details": [
+        {
+          "struct_size": 80,
+          "abi_version": 2,
+          "result": 2,
+          "profile": 1,
+          "visited_polygons": 1,
+          "discovered_polygons": 1,
+          "link_checks": 1,
+          "loaded_tiles": 1,
+          "unresolved_external_edges": 0,
+          "filtered_links": 1,
+          "blocked_links": 0,
+          "scope": 1,
+          "start_ref": 4503599627370511,
+          "goal_ref": 4503599627370512,
+          "traversal_complete": 1,
+          "global_connectivity_known": 0,
+          "link_limit_reached": 0,
+          "reserved": 0,
+          "return_code": 0,
+          "result_name": "disconnected_in_loaded_graph",
+          "scope_name": "loaded_graph_only",
+          "profile_name": "walk",
+          "native_ref_context_only": true,
+          "meaning": "walk_filter_graph_reachability_only",
+          "complete_route_verified": false,
+          "swimming_authorized": false
+        },
+        {
+          "struct_size": 80,
+          "abi_version": 2,
+          "result": 2,
+          "profile": 2,
+          "visited_polygons": 1,
+          "discovered_polygons": 1,
+          "link_checks": 1,
+          "loaded_tiles": 1,
+          "unresolved_external_edges": 0,
+          "filtered_links": 1,
+          "blocked_links": 0,
+          "scope": 1,
+          "start_ref": 4503599627370511,
+          "goal_ref": 4503599627370512,
+          "traversal_complete": 1,
+          "global_connectivity_known": 0,
+          "link_limit_reached": 0,
+          "reserved": 0,
+          "return_code": 0,
+          "result_name": "disconnected_in_loaded_graph",
+          "scope_name": "loaded_graph_only",
+          "profile_name": "tag_agnostic",
+          "native_ref_context_only": true,
+          "meaning": "tag_agnostic_topology_witness_only",
+          "complete_route_verified": false,
+          "swimming_authorized": false
+        }
+      ]
+    },
+    {
+      "name": "visit_link_limits_and_cancellation_are_unknown",
+      "passed": true,
+      "details": {
+        "visits": {
+          "struct_size": 80,
+          "abi_version": 2,
+          "result": 3,
+          "profile": 1,
+          "visited_polygons": 1,
+          "discovered_polygons": 1,
+          "link_checks": 1,
+          "loaded_tiles": 1,
+          "unresolved_external_edges": 0,
+          "filtered_links": 0,
+          "blocked_links": 0,
+          "scope": 1,
+          "start_ref": 4503599627370513,
+          "goal_ref": 4503599627370515,
+          "traversal_complete": 0,
+          "global_connectivity_known": 0,
+          "link_limit_reached": 0,
+          "reserved": 0,
+          "return_code": 0,
+          "result_name": "unknown_resource_limit",
+          "scope_name": "loaded_graph_only",
+          "profile_name": "walk",
+          "native_ref_context_only": true,
+          "meaning": "walk_filter_graph_reachability_only",
+          "complete_route_verified": false,
+          "swimming_authorized": false
+        },
+        "links": {
+          "struct_size": 80,
+          "abi_version": 2,
+          "result": 3,
+          "profile": 1,
+          "visited_polygons": 2,
+          "discovered_polygons": 2,
+          "link_checks": 1,
+          "loaded_tiles": 1,
+          "unresolved_external_edges": 0,
+          "filtered_links": 0,
+          "blocked_links": 0,
+          "scope": 1,
+          "start_ref": 4503599627370513,
+          "goal_ref": 4503599627370515,
+          "traversal_complete": 0,
+          "global_connectivity_known": 0,
+          "link_limit_reached": 1,
+          "reserved": 0,
+          "return_code": 0,
+          "result_name": "unknown_resource_limit",
+          "scope_name": "loaded_graph_only",
+          "profile_name": "walk",
+          "native_ref_context_only": true,
+          "meaning": "walk_filter_graph_reachability_only",
+          "complete_route_verified": false,
+          "swimming_authorized": false
+        },
+        "cancelled": {
+          "struct_size": 80,
+          "abi_version": 2,
+          "result": 4,
+          "profile": 1,
+          "visited_polygons": 0,
+          "discovered_polygons": 1,
+          "link_checks": 0,
+          "loaded_tiles": 1,
+          "unresolved_external_edges": 0,
+          "filtered_links": 0,
+          "blocked_links": 0,
+          "scope": 1,
+          "start_ref": 4503599627370513,
+          "goal_ref": 4503599627370515,
+          "traversal_complete": 0,
+          "global_connectivity_known": 0,
+          "link_limit_reached": 0,
+          "reserved": 0,
+          "return_code": 0,
+          "result_name": "cancelled",
+          "scope_name": "loaded_graph_only",
+          "profile_name": "walk",
+          "native_ref_context_only": true,
+          "meaning": "walk_filter_graph_reachability_only",
+          "complete_route_verified": false,
+          "swimming_authorized": false
+        }
+      }
+    },
+    {
+      "name": "blocked_edges_are_bidirectional_and_blocked_nodes_rejected",
+      "passed": true,
+      "details": {
+        "forward": {
+          "struct_size": 80,
+          "abi_version": 2,
+          "result": 2,
+          "profile": 1,
+          "visited_polygons": 1,
+          "discovered_polygons": 1,
+          "link_checks": 1,
+          "loaded_tiles": 1,
+          "unresolved_external_edges": 0,
+          "filtered_links": 0,
+          "blocked_links": 1,
+          "scope": 1,
+          "start_ref": 4503599627370513,
+          "goal_ref": 4503599627370515,
+          "traversal_complete": 1,
+          "global_connectivity_known": 0,
+          "link_limit_reached": 0,
+          "reserved": 0,
+          "return_code": 0,
+          "result_name": "disconnected_in_loaded_graph",
+          "scope_name": "loaded_graph_only",
+          "profile_name": "walk",
+          "native_ref_context_only": true,
+          "meaning": "walk_filter_graph_reachability_only",
+          "complete_route_verified": false,
+          "swimming_authorized": false
+        },
+        "reverse": {
+          "struct_size": 80,
+          "abi_version": 2,
+          "result": 2,
+          "profile": 1,
+          "visited_polygons": 2,
+          "discovered_polygons": 2,
+          "link_checks": 3,
+          "loaded_tiles": 1,
+          "unresolved_external_edges": 0,
+          "filtered_links": 0,
+          "blocked_links": 1,
+          "scope": 1,
+          "start_ref": 4503599627370515,
+          "goal_ref": 4503599627370513,
+          "traversal_complete": 1,
+          "global_connectivity_known": 0,
+          "link_limit_reached": 0,
+          "reserved": 0,
+          "return_code": 0,
+          "result_name": "disconnected_in_loaded_graph",
+          "scope_name": "loaded_graph_only",
+          "profile_name": "walk",
+          "native_ref_context_only": true,
+          "meaning": "walk_filter_graph_reachability_only",
+          "complete_route_verified": false,
+          "swimming_authorized": false
+        },
+        "blocked_self": {
+          "struct_size": 80,
+          "abi_version": 2,
+          "result": 5,
+          "profile": 1,
+          "visited_polygons": 0,
+          "discovered_polygons": 0,
+          "link_checks": 0,
+          "loaded_tiles": 1,
+          "unresolved_external_edges": 0,
+          "filtered_links": 0,
+          "blocked_links": 0,
+          "scope": 1,
+          "start_ref": 4503599627370515,
+          "goal_ref": 4503599627370515,
+          "traversal_complete": 0,
+          "global_connectivity_known": 0,
+          "link_limit_reached": 0,
+          "reserved": 0,
+          "return_code": 0,
+          "result_name": "endpoint_excluded",
+          "scope_name": "loaded_graph_only",
+          "profile_name": "walk",
+          "native_ref_context_only": true,
+          "meaning": "walk_filter_graph_reachability_only",
+          "complete_route_verified": false,
+          "swimming_authorized": false
+        }
+      }
+    },
+    {
+      "name": "invalid_layout_handle_coordinate_and_reference",
+      "passed": true,
+      "details": {
+        "invalid_reference": {
+          "struct_size": 80,
+          "abi_version": 2,
+          "result": 6,
+          "profile": 1,
+          "visited_polygons": 0,
+          "discovered_polygons": 0,
+          "link_checks": 0,
+          "loaded_tiles": 1,
+          "unresolved_external_edges": 0,
+          "filtered_links": 0,
+          "blocked_links": 0,
+          "scope": 1,
+          "start_ref": 0,
+          "goal_ref": 4503599627370496,
+          "traversal_complete": 0,
+          "global_connectivity_known": 0,
+          "link_limit_reached": 0,
+          "reserved": 0,
+          "return_code": 0,
+          "result_name": "invalid_reference",
+          "scope_name": "loaded_graph_only",
+          "profile_name": "walk",
+          "native_ref_context_only": true,
+          "meaning": "walk_filter_graph_reachability_only",
+          "complete_route_verified": false,
+          "swimming_authorized": false
+        },
+        "invalid_layout_null_and_nonfinite_rejected": true
+      }
+    },
+    {
+      "name": "legacy_abi_matches_current_baseline_dll",
+      "passed": true,
+      "details": {
+        "ring_forward": {
+          "return_code": 0,
+          "expanded": 6,
+          "count": 4,
+          "points": [
+            [
+              15.0,
+              5.0,
+              0.0
+            ],
+            [
+              20.0,
+              10.0,
+              0.0
+            ],
+            [
+              20.0,
+              20.0,
+              0.0
+            ],
+            [
+              15.0,
+              25.0,
+              0.0
+            ]
+          ],
+          "refs": [
+            4503599627370499,
+            4503599627370502,
+            4503599627370500,
+            4503599627370500
+          ],
+          "budget_reason": {
+            "reason": 0,
+            "status": 0
+          }
+        },
+        "ring_reverse": {
+          "return_code": 0,
+          "expanded": 6,
+          "count": 4,
+          "points": [
+            [
+              15.0,
+              25.0,
+              0.0
+            ],
+            [
+              20.0,
+              20.0,
+              0.0
+            ],
+            [
+              20.0,
+              10.0,
+              0.0
+            ],
+            [
+              15.0,
+              5.0,
+              0.0
+            ]
+          ],
+          "refs": [
+            4503599627370500,
+            4503599627370502,
+            4503599627370499,
+            4503599627370499
+          ],
+          "budget_reason": {
+            "reason": 0,
+            "status": 0
+          }
+        },
+        "ground_chain": {
+          "return_code": 0,
+          "expanded": 3,
+          "count": 4,
+          "points": [
+            [
+              65.0,
+              5.0,
+              0.0
+            ],
+            [
+              65.0,
+              10.0,
+              0.0
+            ],
+            [
+              65.0,
+              20.0,
+              0.0
+            ],
+            [
+              65.0,
+              25.0,
+              0.0
+            ]
+          ],
+          "refs": [
+            4503599627370513,
+            4503599627370514,
+            4503599627370515,
+            4503599627370515
+          ],
+          "budget_reason": {
+            "reason": 0,
+            "status": 0
+          }
+        },
+        "water_endpoint": {
+          "return_code": 3,
+          "expanded": 0,
+          "count": 0,
+          "points": [],
+          "refs": [],
+          "budget_reason": {
+            "reason": 0,
+            "status": 0
+          }
+        },
+        "ambiguous_floor": {
+          "return_code": 4,
+          "expanded": 0,
+          "count": 0,
+          "points": [],
+          "refs": [],
+          "budget_reason": {
+            "reason": 0,
+            "status": 0
+          }
+        },
+        "hole_endpoint": {
+          "return_code": 3,
+          "expanded": 0,
+          "count": 0,
+          "points": [],
+          "refs": [],
+          "budget_reason": {
+            "reason": 0,
+            "status": 0
+          }
+        },
+        "budget_zero": {
+          "return_code": 6,
+          "expanded": 0,
+          "count": 0,
+          "points": [],
+          "refs": [],
+          "budget_reason": {
+            "reason": 1,
+            "status": 536870912
+          }
+        },
+        "offmesh_disallowed": {
+          "return_code": 5,
+          "expanded": 1,
+          "count": 0,
+          "points": [],
+          "refs": [],
+          "budget_reason": {
+            "reason": 0,
+            "status": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "diagnostics_preserve_search_result_and_budget_reason",
+      "passed": true,
+      "details": {
+        "path_and_expansions_unchanged": true,
+        "budget_reason_preserved": {
+          "reason": 1,
+          "status": 536870912
+        }
+      }
+    }
+  ],
+  "passed_check_count": 13,
+  "total_check_count": 13,
+  "production_changes_performed": false,
+  "swimming_enabled": false
+}

@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "version": "surface-diagnostics-v1",
+  "payload_sha256": {
+    "surface_diagnostics_v2.h": "ea33ef4d772cc2a10ae1a0456fd1cfd803bd8e9dc3e89c830c14701c7e233f6e",
+    "surface_diagnostics_v2.inc": "72662ba9abea88e18d1d426ffbc62b82a3d74e3cb3e282523a3442c581367392",
+    "nav_diagnostics.py": "213b7d40702231657253228d7c51499ea57d528e85ff8660ab19dd8c41d4600d",
+    "diagnostic_fixture.cpp": "a9372190be9903ec7b44c9e1b7776477ead5f28f0e80d769bcfd123ba68f781c"
+  },
+  "support_sha256": {
+    "install_surface_diagnostics.py": "c2f912917881f0e98dc47480a1fb1a7ab66af594e03121ba4a4ee7f59ee9a557",
+    "verify_surface_diagnostics.py": "46daa0738f23dc27bad711aa6c14d6b9d9f5fd08ed14d9893e3f9376c9d7847a",
+    "windows_build.py": "172b6efd1c82b5d87845b22042d0242a578fa51a252eed72ec70fe6152480620"
+  }
+}
