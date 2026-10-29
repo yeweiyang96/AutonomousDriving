@@ -144,8 +144,22 @@ def build(args):
     (work/'vmaps').mkdir(exist_ok=True)
     call('assembly',[tools+'/vmap4assembler','Buildings','vmaps'],'collision-assemble.log')
     for c in (0,1):
-        call(f'nav{c}',[tools+'/mmaps_generator',str(c),'--input','.','--output','.', '--threads',str(args.threads),
-                       '--maxAngle','50','--maxAngleNotSteep','50','--walkableClimb','2','--walkableRadius','2'],f'nav-{c}.log')
+    call(
+        f'nav{c}',
+        [
+            tools+'/mmaps_generator',
+            str(c),
+            '--input', '.',
+            '--output', '.',
+            '--threads', str(args.threads),
+            '--maxAngle', '50',
+            '--maxAngleNotSteep', '50',
+            '--walkableClimb', '2',
+            '--walkableRadius', '2',
+            '--partition', 'monotone',
+        ],
+        f'nav-{c}.log'
+    )
     if installed_build(args.game_root,'wowf') != build_info:
         raise RuntimeError('The game build changed during extraction; pack was not published')
     publish(work,args.output)
