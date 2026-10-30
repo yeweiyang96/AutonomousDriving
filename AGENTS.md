@@ -470,4 +470,4 @@ When a new navigation failure is reported:
 8. run `check_navigation_regressions.py`;
 9. publish only after the candidate and active-pack regression gates both pass.
 
-Avoid coordinate-specific production patches unless the underlying source geometry itself is genuinely exceptional and cannot be represented by a general rule.
+Avoid coordinate-specific production patches unless the underlying source geometry itself is genuinely exceptional and cannot be represented by a general rule
