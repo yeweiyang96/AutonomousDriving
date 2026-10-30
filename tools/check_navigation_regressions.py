@@ -7,6 +7,7 @@ Default behavior:
 - checks required bounded-search ABI support
 - runs two known bridge regressions in both directions
 - runs two long-route regressions
+- runs the recorded road-loop regression in both directions
 - runs the recorded Westfall topology/quality regression
 - writes a JSON report under runtime/navigation-regressions
 
@@ -129,7 +130,110 @@ WESTFALL = {
     "max_expanded": 500000,
     "max_route_guide_ratio": 1.10,
     "max_fallback_count": 0,
+    "max_route_xy": 3000.0,
 }
+
+ROAD_LOOP_CASES = (
+    {
+        "name": "road_loop_A_to_B",
+        "continent": 0,
+        "start": (-9937.311572232578, 1001.1050237878376, None),
+        "goal": (-10641.868693563683, 1017.8745550378376, None),
+        "allow_candidates": False,
+        "max_expanded": 500000,
+        "max_route_xy": 1000.0,
+        "max_route_guide_ratio": 0.8,
+    },
+    {
+        "name": "road_loop_B_to_A",
+        "continent": 0,
+        "start": (-10641.868693563683, 1017.8745550378376, None),
+        "goal": (-9937.311572232578, 1001.1050237878376, None),
+        "allow_candidates": False,
+        "max_expanded": 500000,
+        "max_route_xy": 1000.0,
+        "max_route_guide_ratio": 0.8,
+    },
+    {
+        "name": "road_loop_candidates_A_to_B",
+        "continent": 0,
+        "start": (-9937.311572232578, 1001.1050237878376, None),
+        "goal": (-10641.868693563683, 1017.8745550378376, None),
+        "allow_candidates": True,
+        "max_expanded": 500000,
+        "max_route_xy": 1000.0,
+        "max_route_guide_ratio": 0.8,
+    },
+    {
+        "name": "road_loop_candidates_B_to_A",
+        "continent": 0,
+        "start": (-10641.868693563683, 1017.8745550378376, None),
+        "goal": (-9937.311572232578, 1001.1050237878376, None),
+        "allow_candidates": True,
+        "max_expanded": 500000,
+        "max_route_xy": 1000.0,
+        "max_route_guide_ratio": 0.8,
+    },
+)
+
+
+def check_direct_selection(pack, route, guide, budget):
+    selection = (pack.last_route_diagnostics or {}).get("route_selection", {})
+    if selection.get("triggered") is not True or selection.get("selected") != "direct":
+        raise AssertionError(f"shorter complete walk was not selected: {selection}")
+    if selection.get("direct_status") != "complete":
+        raise AssertionError("direct comparison did not establish a complete route")
+    if selection.get("search_scope") != "loaded_walk_graph_with_conservative_length_domain":
+        raise AssertionError("direct comparison did not use the bounded native search domain")
+    limit = selection.get("search_length_limit_xy")
+    guided_length = selection.get("guided_length_xy")
+    if not isinstance(limit, (int, float)) or not isinstance(guided_length, (int, float)):
+        raise AssertionError("direct comparison omitted its native length bound")
+    if not math.isclose(limit, guided_length * 0.8, rel_tol=1e-10, abs_tol=1e-6):
+        raise AssertionError("direct comparison length bound differs from 80% of guided route")
+    if not math.isclose(selection.get("guide_length_xy", math.inf), guide.distance,
+                        rel_tol=1e-10, abs_tol=1e-6):
+        raise AssertionError("direct comparison does not describe the actual road guide")
+    if not math.isclose(selection.get("direct_length_xy", math.inf), route.distance,
+                        rel_tol=1e-10, abs_tol=1e-6):
+        raise AssertionError("selected route length differs from the direct candidate")
+    guided_expanded = selection.get("guided_expanded")
+    direct_expanded = selection.get("direct_expanded")
+    if not all(isinstance(value, int) and value >= 0
+               for value in (guided_expanded, direct_expanded)):
+        raise AssertionError("comparison omitted guided/direct expansion accounting")
+    total = guided_expanded + direct_expanded
+    if total != selection.get("expanded_total") or total != route.expanded or total > budget:
+        raise AssertionError(f"shared search budget accounting is inconsistent: {selection}")
+    if selection.get("passed_budget") != budget - guided_expanded:
+        raise AssertionError("direct comparison did not receive only the remaining shared budget")
+    return selection
+
+
+def run_road_loop(pack, coarse, Point, case):
+    start = Point(case["continent"], *case["start"])
+    goal = Point(case["continent"], *case["goal"])
+    guide = coarse._plan_coarse(start, goal, allow_candidates=case["allow_candidates"],
+                                blocked_edges=frozenset())
+    route = pack.plan(start, goal, guide=guide, blocked_edges=frozenset(),
+                      max_expansions=case["max_expanded"])
+    selection = check_direct_selection(pack, route, guide, case["max_expanded"])
+    ratio = route.distance / guide.distance if guide.distance else math.inf
+    if route.distance >= case["max_route_xy"] or ratio >= case["max_route_guide_ratio"]:
+        raise AssertionError(f"road loop retained: route_xy={route.distance}, route/guide={ratio}")
+    for requested, resolved in ((start, route.start), (goal, route.goal)):
+        if (requested.c, requested.x, requested.y) != (resolved.c, resolved.x, resolved.y):
+            raise AssertionError("road-loop route moved an endpoint horizontally")
+    return {
+        "name": case["name"], "status": "passed",
+        "allow_candidates": case["allow_candidates"],
+        "start": point_dict(start), "goal": point_dict(goal),
+        "straight_xy": start.distance(goal), "guide_xy": guide.distance,
+        "route_xy": route.distance, "route_guide_ratio": ratio,
+        "point_count": len(route.points), "expanded": route.expanded,
+        "route_selection": selection,
+        "resolved_start": point_dict(route.start), "resolved_goal": point_dict(route.goal),
+    }
 
 
 def check_range(label, value, bounds):
@@ -201,6 +305,7 @@ def run_westfall(pack, coarse, Point, detour_metrics):
     )
 
     metrics = detour_metrics(route.points, guide.points)
+    selection = check_direct_selection(pack, route, guide, WESTFALL["max_expanded"])
     ratio = route.distance / guide.distance if guide.distance else math.inf
     trace = (pack.last_route_diagnostics or {}).get("road_trace", [])
     fallback_modes = {
@@ -212,6 +317,8 @@ def run_westfall(pack, coarse, Point, detour_metrics):
 
     if metrics.get("excessive_detour"):
         raise AssertionError("Westfall route was classified as excessive_detour")
+    if route.distance >= WESTFALL["max_route_xy"]:
+        raise AssertionError(f"Westfall route_xy={route.distance} did not improve below 3000 yards")
     if ratio > WESTFALL["max_route_guide_ratio"]:
         raise AssertionError(
             f"Westfall route/guide ratio {ratio:.6f} exceeds "
@@ -235,6 +342,7 @@ def run_westfall(pack, coarse, Point, detour_metrics):
         "point_count": len(route.points),
         "expanded": route.expanded,
         "detour_metrics": metrics,
+        "route_selection": selection,
         "trace_count": len(trace),
         "trace_modes": dict(Counter(row.get("mode") for row in trace)),
         "trace_statuses": dict(
@@ -274,6 +382,7 @@ def main(argv=None):
         type=Path,
         help="Explicit JSON report path; default: runtime/navigation-regressions/<timestamp>.json",
     )
+    parser.add_argument('--roads-manifest',type=Path,help='Unified road manifest; defaults to active roads for the active navigation pack')
     args = parser.parse_args(argv)
 
     root = args.project_root.resolve()
@@ -310,6 +419,7 @@ def main(argv=None):
         "full_load": None,
         "native": {},
         "cases": [],
+        "road_loops": [],
         "westfall": None,
         "status": "running",
     }
@@ -391,6 +501,21 @@ def main(argv=None):
                     flush=True,
                 )
 
+        print("\n=== ROAD LOOP QUALITY ===", flush=True)
+        for case in ROAD_LOOP_CASES:
+            try:
+                result = run_road_loop(pack, coarse, Point, case)
+                report["road_loops"].append(result)
+                print(f"PASS {result['name']}: straight={result['straight_xy']:.4f} "
+                      f"guide={result['guide_xy']:.4f} route={result['route_xy']:.4f} "
+                      f"expanded={result['expanded']} selected=direct", flush=True)
+            except Exception as exc:
+                item = {"name": case["name"], "status": "failed",
+                        "error_code": getattr(exc, "code", type(exc).__name__), "error": str(exc)}
+                report["road_loops"].append(item)
+                failures.append(item)
+                print(f"FAIL {case['name']}: {item['error_code']}: {item['error']}", flush=True)
+
         print("\n=== WESTFALL QUALITY ===", flush=True)
         try:
             westfall = run_westfall(pack, coarse, Point, detour_metrics)
@@ -405,6 +530,7 @@ def main(argv=None):
             )
             print(f"expanded    = {westfall['expanded']}", flush=True)
             print(f"fallbacks   = {westfall['fallback_count']}", flush=True)
+            print(f"selected    = {westfall['route_selection']['selected']}", flush=True)
         except Exception as exc:
             item = {
                 "name": WESTFALL["name"],
@@ -419,6 +545,18 @@ def main(argv=None):
                 f"{item['error_code']}: {item['error']}",
                 flush=True,
             )
+
+        road_manifest=args.roads_manifest
+        if road_manifest is None and manifest==(root/'data/navigation/manifest.json').resolve():
+            road_manifest=root/'data/roads/manifest.json'
+        if road_manifest is not None:
+            if not road_manifest.exists():raise ValueError('Unified road execution gate requires its road manifest')
+            print('\n=== UNIFIED ROAD EXECUTION GATE ===',flush=True)
+            from tools.check_unified_roads import check as check_roads
+            unified=check_roads(manifest,road_manifest.resolve(),report_path.with_suffix('.roads.json'),
+                                full=not args.skip_full_load)
+            report['unified_roads']=unified
+            if unified['status']!='passed':failures.append(dict(name='unified_roads',error='Unified road gate failed'))
 
     except Exception as exc:
         failures.append(

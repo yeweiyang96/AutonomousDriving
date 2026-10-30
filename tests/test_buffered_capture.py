@@ -83,11 +83,11 @@ class ControlledSource:
 
 
 class BufferedCaptureTests(unittest.TestCase):
-    def make_capture(self, source=None):
+    def make_capture(self, source=None, **options):
         source = source or ControlledSource()
         focus = FocusBackend()
         capture = BufferedCapture(capture_factory=source.factory, _focus_backend=focus,
-                                  interval=.001, close_timeout=.01)
+                                  interval=.001, close_timeout=.01, **options)
 
         def cleanup():
             capture.close()
@@ -96,6 +96,31 @@ class BufferedCaptureTests(unittest.TestCase):
 
         self.addCleanup(cleanup)
         return capture, source, focus
+
+    def test_slow_floor_query_stays_on_worker_and_keeps_old_timestamp(self):
+        from dataclasses import replace
+        entered, release = threading.Event(), threading.Event()
+        owners=[]
+        class Resolver:
+            error=''
+            def __init__(self,*args,**kwargs):owners.append(threading.get_ident())
+            def resolve(self,sample):
+                entered.set()
+                release.wait(2)
+                return replace(sample,z=10,height_source='trajectory')
+            def close(self):owners.append(threading.get_ident())
+        capture,source,_=self.make_capture(asset_root=ROOT/'data',height_resolver_factory=Resolver)
+        self.addCleanup(release.set)
+        source.tokens.put((1,100.))
+        self.assertTrue(entered.wait(1))
+        self.assertIsNone(capture.poll())
+        self.assertEqual(capture.diagnostics()['phase'],'height')
+        release.set()
+        wait_until(lambda:capture.diagnostics()['generation']>=1)
+        self.assertEqual(capture.poll().captured_at,100.)
+        capture.close();source.tokens.put(None)
+        self.assertTrue(capture._worker_closed.wait(1))
+        self.assertEqual(owners,[source.owner,source.owner])
 
     def test_blocked_capture_cannot_block_poll_or_diagnostic_reads(self):
         capture, source, _ = self.make_capture()

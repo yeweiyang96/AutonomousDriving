@@ -43,7 +43,7 @@ function UnitPosition(unit)
     if state.position_available then return state.x,state.y,state.z,state.c end
 end
 function GetPlayerFacing() return state.facing end
-function GetUnitSpeed(unit) assert(unit=='player');return state.speed,state.speed end
+function GetUnitSpeed(unit) assert(unit=='player');return state.speed,state.ground_speed or state.speed end
 function UnitIsConnected(unit) assert(unit=='player');return state.connected end
 function UnitExists(unit) assert(unit=='player');return state.exists end
 function UnitAffectingCombat(unit) assert(unit=='player');return state.combat end
@@ -123,7 +123,7 @@ class AddonHarness:
     def packet(self):
         nibbles = []
         version = round(self.frame.textures[37].color[1]*15)*16 + round(self.frame.textures[38].color[1]*15)
-        for index in range(33, 33 + (76 if version == 2 else 68)):
+        for index in range(33, 33 + int(self.globals.AD.Protocol.FRAME_BYTES)*2):
             color = self.frame.textures[index].color
             assert color[1] == color[2] == color[3] and color[4] == 1
             nibbles.append(round(color[1] * 15))
@@ -135,7 +135,7 @@ class AddonHarness:
     def image(self):
         image = Image.new("RGB", (int(self.frame.width), int(self.frame.height)))
         draw = ImageDraw.Draw(image)
-        for index in range(1, 129):
+        for index in range(1, len(self.frame.textures)+1):
             texture = self.frame.textures[index]
             x, y = int(texture.point[4]), -int(texture.point[5])
             color = tuple(math.floor(texture.color[channel] * 255 + 0.5) for channel in (1, 2, 3))
@@ -144,7 +144,7 @@ class AddonHarness:
 
     def encode(self, telemetry):
         data = {name: getattr(telemetry, name) for name in (
-            "session", "seq", "c", "ui_map", "x", "y", "z", "facing", "speed", "flags")}
+            "session", "seq", "c", "ui_map", "x", "y", "z", "facing", "speed", "flags", "zone_token", "environment")}
         data["flags"] = int(data["flags"])
         result = self.globals.AD.Protocol.Encode(self.lua.table_from(data))
         if isinstance(result, tuple):
@@ -157,19 +157,33 @@ class AddonLuaTests(unittest.TestCase):
     def setUp(self):
         self.addon = AddonHarness()
 
+    def test_live_speed_capability_mount_and_zero_are_separate(self):
+        self.addon.lua.execute('function IsMounted() return state.mounted end')
+        self.addon.state.ground_speed=14
+        self.addon.state.mounted=True
+        for speed in (14,7,3.5,0,11.2):
+            self.addon.state.speed=speed;self.addon.tick();t=self.addon.telemetry()
+            self.assertAlmostEqual(t.speed,speed,delta=1/256)
+            self.assertEqual(t.ground_speed,14);self.assertTrue(t.mounted)
+        self.addon.lua.execute('function GetUnitSpeed() return 0 end')
+        self.addon.tick();t=self.addon.telemetry()
+        self.assertEqual(t.speed,0);self.assertIsNone(t.ground_speed);self.assertTrue(t.flags&Flags.VALID)
+        self.addon.lua.execute('function GetUnitSpeed() return nil,14 end')
+        self.addon.tick();self.assertFalse(self.addon.telemetry().flags&Flags.VALID)
+
     def test_actual_lua51_load_and_rendered_frame(self):
         self.assertEqual("Lua 5.1", self.addon.lua.eval("_VERSION"))
         t = self.addon.telemetry()
         self.assertEqual((1, 1411, -1234.5, 5678.25), (t.c, t.ui_map, t.x, t.y))
         self.assertEqual(Flags.VALID, t.flags)
-        self.assertEqual((128, 64), (self.addon.frame.width, self.addon.frame.height))
+        self.assertEqual((128, 72), (self.addon.frame.width, self.addon.frame.height))
         self.assertFalse(self.addon.frame.mouse)
-        self.assertEqual(128, len(self.addon.frame.textures))
+        self.assertEqual(144, len(self.addon.frame.textures))
         self.assertEqual(t, decode_image(self.addon.image(), t.captured_at))
 
     def test_actual_lua_encoder_matches_python_golden_and_rounding(self):
         golden = Telemetry(0x12345678, 0xFFFFFFFE, 1, 1411, -1234.5, 5678.25, math.pi / 2, 7, Flags.VALID)
-        self.assertEqual(bytes.fromhex("4144010078563412feffffff010083050000d8b2ffffe4620100004000070100066c"),
+        self.assertEqual(bytes.fromhex("4144040078563412feffffff010083050000d8b2ffffe462010000400007010000000000000000000000b692"),
                          self.addon.encode(golden))
         for x in (-17000.123, -0.03125, 0.03125, 17000.987):
             for angle in (-0.001, math.tau - 0.000001, math.tau + 0.5):
@@ -264,12 +278,12 @@ class AddonLuaTests(unittest.TestCase):
         reloaded = AddonHarness(saved)
         self.assertNotEqual(previous, reloaded.telemetry().session)
         reloaded.globals.SlashCmdList.AUTONOMOUSDRIVINGTELEMETRY("cell 12")
-        self.assertEqual((192, 96), (reloaded.frame.width, reloaded.frame.height))
+        self.assertEqual((192, 108), (reloaded.frame.width, reloaded.frame.height))
         reloaded.globals.SlashCmdList.AUTONOMOUSDRIVINGTELEMETRY("hide")
         self.assertFalse(reloaded.frame.shown)
         reloaded.globals.SlashCmdList.AUTONOMOUSDRIVINGTELEMETRY("reset")
         self.assertTrue(reloaded.frame.shown)
-        self.assertEqual((128, 64), (reloaded.frame.width, reloaded.frame.height))
+        self.assertEqual((128, 72), (reloaded.frame.width, reloaded.frame.height))
 
 
 if __name__ == "__main__":

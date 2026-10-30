@@ -6,7 +6,7 @@ Planning is cancellable and separate from screen/stop monitoring.
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import asdict
+from dataclasses import asdict, replace
 import math
 from pathlib import Path
 import queue
@@ -21,16 +21,19 @@ from .continuous_controller import ContinuousController
 from .device_diagnostics import FirmwareDiagnosticsClient, describe_diagnostic
 from .eventlog import EventLog
 from .lease import LeaseClient
-from .models import Flags, Point, Telemetry, angle_error
-from .pico import ActionGate, PicoClient, PicoError
+from .motion_protocol import MotionClient
+from .motion import MotionProfile
+from .motion_worker import MotionWorker
+from .models import Flags, Point, Route, Telemetry, angle_error
+from .pico import ActionGate, PicoClient, PicoError, forward_sequence
 from .planner import Planner
 from .planning_worker import IsolatedPlanner
-from .settings import ROOT, Settings, key_code
+from .settings import ROOT, Settings, key_code, calibration_required_reason
 from .scheduling import LoopWaiter
 from .telemetry import FreshnessTracker
 
 
-ACTIVE = {'armed', 'planning', 'running', 'calibration_armed', 'calibrating'}
+ACTIVE = {'armed', 'planning', 'running', 'settling', 'calibration_armed', 'calibrating'}
 UNSAFE = Flags.COMBAT | Flags.DEAD | Flags.SWIMMING | Flags.FLYING | Flags.LOADING | \
     Flags.INPUT_FOCUS | Flags.TAXI | Flags.TRANSPORT
 
@@ -44,19 +47,20 @@ def unsafe_reason(t: Telemetry | None) -> str | None:
                          (Flags.TAXI, '正在乘坐飞行交通'), (Flags.TRANSPORT, '正在使用交通工具')):
         if t.flags & flag:
             return reason
+    if t.environment&8:return '角色离开地面；本轮不支持跳跃'
     return None
 
 
 class Runtime:
     def __init__(self, bundle, settings: Settings, events: queue.Queue,
                  *, capture_factory=BufferedCapture, pico_factory=PicoClient,
-                 lease_factory=LeaseClient, diagnostic_factory=FirmwareDiagnosticsClient,
+                 lease_factory=MotionClient, diagnostic_factory=FirmwareDiagnosticsClient,
                  planner_factory=Planner,
                  log_folder: Path | None = None):
         self.bundle, self.settings, self.events = bundle, settings, events
         self.capture_factory, self.pico_factory = capture_factory, pico_factory
         # None is an explicit legacy adapter for offline fixtures only. The UI
-        # always uses the v3 lease path; unsupported firmware never falls back.
+        # always uses v4 motion windows; unsupported firmware never falls back.
         self.lease_factory = lease_factory
         self.diagnostic_factory = diagnostic_factory
         self.planner_factory = IsolatedPlanner if planner_factory is Planner else planner_factory
@@ -64,6 +68,7 @@ class Runtime:
         self.dispatch_lock = threading.Lock()
         self.stop_requested = threading.Event()
         self.control_epoch = 0
+        self._input_intent = None
         self.quit = threading.Event()
         self._waiter = None
         self.thread: threading.Thread | None = None
@@ -83,6 +88,13 @@ class Runtime:
         self._lease_frame = None
         self._lease_logged_at = None
         self._lease_application = None
+        self.motion_worker = None
+        self._motion_sent_frame = None
+        self._motion_last_window = None
+        self._motion_event_pending = None
+        self._motion_walk_attempted = False
+        self._motion_usb_pending=None
+        self.movement_samples = []
         self.tracker = FreshnessTracker()
         self.controller = self._controller()
         self.state = 'monitoring'
@@ -98,6 +110,10 @@ class Runtime:
         self._last_timing_emit = 0.
         self.task_new = True
         self.calibration_samples = []
+        self._calibration_candidate = None
+        self._calibration_epoch = None
+        self._calibration_baseline = None
+        self._calibration_baseline_count = 0
         self.log = EventLog(log_folder or ROOT / 'runtime' / 'logs')
         self.log.write('session', settings={k: v for k, v in asdict(settings).items() if k != 'calibration'})
 
@@ -117,13 +133,25 @@ class Runtime:
         self.thread.start()
 
     def command(self, kind: str, **values):
+        expected_epoch = values.pop('_expected_epoch', None)
         with self.dispatch_lock:
+            # A UI focus request must not arm after a newer F12/configure.
+            if expected_epoch is not None and expected_epoch != self.control_epoch:
+                return None
+            if kind == 'toggle' and getattr(self, '_input_intent', None) is not None:
+                kind = 'pause'
             if kind in ('stop', 'pause', 'toggle', 'configure'):
                 self.control_epoch += 1
                 self.stop_requested.set()
-            self.commands.put((kind, {**values, '_epoch': self.control_epoch}))
+                self._input_intent = None
+            epoch = self.control_epoch
+            if kind in ('arm', 'calibrate'):
+                self._input_intent = object()
+                values['_input_intent'] = self._input_intent
+            self.commands.put((kind, {**values, '_epoch': epoch}))
         if self._waiter:
             self._waiter.wake()
+        return epoch
 
     def _resume_input(self, epoch: int) -> bool:
         with self.dispatch_lock:
@@ -164,6 +192,12 @@ class Runtime:
         self._lease_target = ()
         self._lease_frame = None
         self._lease_application = None
+        if self.motion_worker:
+            self.motion_worker.close()
+            self.motion_worker = None
+        self._motion_last_window = self._motion_event_pending = None
+        self._motion_usb_pending=None
+        self._motion_sent_frame = None
         # One best-effort release; movement packets are never retransmitted.
         if self.pico and self.lease is None:
             try:
@@ -180,6 +214,10 @@ class Runtime:
         self.plan_cancel.set()
         self.future = None
         self.pending = self.gate = None
+        self._calibration_candidate = None
+        self._calibration_epoch = None
+        self._calibration_baseline = None
+        self._calibration_baseline_count = 0
         self.controller.pause(reason)
         if was_active:
             self._release()
@@ -258,18 +296,25 @@ class Runtime:
                 if self.state in ACTIVE:
                     self._halt('快捷键暂停')
                 elif self.goal is not None:
+                    reason = self._calibration_required_reason()
+                    if reason:
+                        self._halt(reason)
+                        continue
                     self._cancel_diagnostic()
                     if not self._resume_input(values['_epoch']):
                         continue
                     self.controller.reset_observation_session()
                     self.task_new = False
-                    self._status('armed', '等待切回游戏；将从最新位置重新规划')
+                    self._status('armed', '等待游戏前台与新遥测；将从最新位置重新规划')
             elif kind == 'configure':
                 self._halt('配置已更新', 'monitoring')
                 updated = values['settings']
-                if (updated.forward_key, updated.left_key, updated.right_key, updated.window_title) != \
-                        (self.settings.forward_key, self.settings.left_key, self.settings.right_key, self.settings.window_title):
+                # The walk toggle was not used to measure yaw/strafe. Changing
+                # it still stops and rebuilds input, but preserves that model.
+                binding_names=('forward_key','left_key','right_key','strafe_left_key','strafe_right_key','window_title')
+                if tuple(getattr(updated,n) for n in binding_names)!=tuple(getattr(self.settings,n) for n in binding_names):
                     updated.calibration = None
+                    updated.movement_calibration=None
                 self.settings = updated
                 self.controller = self._controller()
                 self._connect_objects()
@@ -299,27 +344,54 @@ class Runtime:
                     self._emit('message', text=f'Pico 已回应；USB={health.usb_mounted}，等待队列={health.queue_depth}，忙={health.busy}')
                 except (OSError, PicoError) as exc:
                     self._emit('message', text=f'Pico 查询失败：{exc}')
-            elif kind == 'calibrate':
-                self._halt('准备校准', 'monitoring')
-                self._cancel_diagnostic()
-                if not self._resume_input(values['_epoch']):
-                    continue
-                self.calibration_samples = []
-                self._status('calibration_armed', '请切回游戏并保持鼠标、键盘不动；将原地左右短转各两次')
-            elif kind == 'arm':
-                self._halt('准备新路线', 'monitoring')
-                self._cancel_diagnostic()
-                self.goal = values['goal']
-                self.settings.allow_candidates = values.get('allow_candidates', False)
-                self.task_new = True
-                if not self.settings.calibration:
-                    self._status('paused', '请先完成转向校准')
-                else:
-                    if not self._resume_input(values['_epoch']):
-                        continue
-                    self._status('armed', '等待切回游戏；将从最新位置重新规划')
+            elif kind in ('calibrate', 'arm'):
+                try:
+                    self._prepare_input(kind, values)
+                finally:
+                    # Keep the intent visible to F8 until preparation has
+                    # finished, including its temporary monitoring state.
+                    with self.dispatch_lock:
+                        if self._input_intent is values.get('_input_intent'):
+                            self._input_intent = None
+
+    def _prepare_input(self, kind, values):
+        if kind == 'calibrate':
+            self._halt('准备校准', 'monitoring')
+            self._cancel_diagnostic()
+            if not self._resume_input(values['_epoch']):
+                return
+            self.calibration_samples = []
+            self.movement_samples = []
+            self._calibration_epoch = values['_epoch']
+            if isinstance(self.lease, MotionClient):
+                self.settings.calibration = self.settings.movement_calibration = None
+                self.controller = self._controller()
+                self.settings.save()
+                self._emit('calibration_reset')
+            self._status('calibration_armed', '请保持游戏在前台并松开键鼠；将在空旷地面短转并测试平移，F12 停止')
+        else:
+            self._halt('准备新路线', 'monitoring')
+            self._cancel_diagnostic()
+            self.goal = values['goal']
+            self.settings.allow_candidates = values.get('allow_candidates', False)
+            self.task_new = True
+            self._motion_walk_attempted=False
+            reason = self._calibration_required_reason()
+            if reason:
+                self._status('paused', reason)
+            elif self._resume_input(values['_epoch']):
+                self._status('armed', '等待游戏前台与新遥测；将从最新位置重新规划')
+
+    def _calibration_required_reason(self):
+        if isinstance(self.lease, MotionClient):
+            return calibration_required_reason(self.settings)
+        return None if self.settings.calibration else '请先完成转向校准'
 
     def _request_plan(self, position: Point):
+        observed = self.tracker.latest
+        if observed and observed.height_source in ('ambiguous', 'unavailable') and position == observed.point:
+            self._status('armed', height_status(observed))
+            return
         self.plan_cancel.set()
         self.plan_cancel = threading.Event()
         generation, cancel = self.generation, self.plan_cancel
@@ -327,7 +399,8 @@ class Runtime:
         goal = self.goal
         candidates = self.settings.allow_candidates
         self.log.write('plan_request', start=position, goal=goal, allow_candidates=candidates,
-                       start_height_source=getattr(self.tracker.latest, 'height_source', 'raw'))
+                       start_height_source=getattr(self.tracker.latest, 'height_source', 'raw'),
+                       blocked_edges=sorted(blocked))
         def work():
             return self.planner_factory(self.bundle).plan(position, goal,
                 allow_candidates=candidates, blocked_edges=blocked,
@@ -370,11 +443,11 @@ class Runtime:
         status = status or self.lease.status
         if status is not None and self.firmware_info:
             detail = self.firmware_info
-            issues = detail.compatibility_issues()
+            issues = detail.compatibility_issues(protocol=4 if isinstance(self.lease,MotionClient) else 3)
             if detail.boot == status.boot and issues and self.lease.is_active:
                 raise PicoError('固件与当前连续导航不兼容：' + '；'.join(issues))
         if before_state == 'diagnosing' and self.lease.state == 'idle' and status is not None:
-            self._emit('message', text=f'ADR v3 已回应；设备可用={status.available}，'
+            self._emit('message', text=f'ADRV v{getattr(self.lease,"protocol_version",3)} 已回应；设备可用={status.available}，'
                        f'会话活动={status.active}，剩余租约={status.lease_remaining_ms} ms')
         if status is not None and status.received_at != self._lease_logged_at:
             self._lease_logged_at = status.received_at
@@ -459,7 +532,7 @@ class Runtime:
         summary, details = describe_diagnostic(result)
         self._emit('device_diagnostic', summary=summary, details=details)
 
-    def _lease_send(self, t, now, *, key=None, duration=0, renew=False):
+    def _lease_send(self, t, now, *, key=None, keys=None, duration=0, renew=False):
         # Window title/identity calls can stall. Keep them outside the dispatch
         # lock so another thread can latch STOP while this check is in flight.
         # BufferedCapture.foreground also rechecks GetForegroundWindow after
@@ -475,7 +548,7 @@ class Runtime:
             if renew:
                 self.lease.renew(now)
             else:
-                keys = (key,) if key is not None else ()
+                keys = tuple(keys) if keys is not None else ((key,) if key is not None else ())
                 self.lease.set_keys(keys, now, hold_ms=duration)
                 self._lease_target = keys
                 self._lease_application = (self.lease.seq, now, keys, duration)
@@ -490,10 +563,35 @@ class Runtime:
             return
         self._lease_send(t, now, renew=True)
 
+    @staticmethod
+    def _calibration_pose_stable(before, after):
+        # Only calibration waits for a measured plateau. USB completion alone
+        # does not mean that the game has processed the release. Position is
+        # quantized to 1/16 yd, so also require the live speed to be zero.
+        return (before.session == after.session and before.c == after.c
+                and before.speed <= .05 and after.speed <= .05
+                and before.point.distance(after.point) < .04
+                and abs(angle_error(after.facing, before.facing)) < math.radians(.2))
+
+    def _calibration_settled(self, action, t):
+        previous = action.get('settle_frame')
+        if previous and (previous.session, previous.seq) == (t.session, t.seq):
+            return False
+        stable = previous is not None and self._calibration_pose_stable(previous, t)
+        action['settle_count'] = action.get('settle_count', 0) + 1 if stable else 0
+        action['settle_frame'] = t
+        if not stable:
+            action['settle_start_seq'] = t.seq
+        # Two stable intervals (three distinct frames) after the zero report,
+        # and a real observed effect, prevent delayed input or duplicate reads
+        # from certifying a premature endpoint. The existing timeout bounds it.
+        return action['first_change'] is not None and action['settle_count'] >= 2
+
     def _lease_pending_step(self, t, now, status):
         action = self.pending
         if action.get('calibration') and action['first_change'] is None and \
-                abs(angle_error(t.facing, action['before'].facing)) > math.radians(.2):
+                (abs(angle_error(t.facing, action['before'].facing)) > math.radians(.2) or
+                 (action.get('translation') and t.point.distance(action['before'].point)>.07)):
             action['first_change'] = now
         earliest = action['sent'] + action['duration'] / 1000 + .005
         if now > action['sent'] + action['duration'] / 1000 + 1:
@@ -509,9 +607,18 @@ class Runtime:
         complete = released and action.get('release_observed_at') is not None
         complete = complete and t.captured_at >= max(earliest, action['release_observed_at'])
         complete = complete and (t.session, t.seq) != action['release_frame']
+        if complete and action.get('calibration') and isinstance(self.lease, MotionClient):
+            complete = self._calibration_settled(action, t)
         if complete:
             if action.get('calibration'):
                 self._finish_calibration_sample(t, now)
+                self.log.write('calibration_sample', action_seq=action['before'].seq,
+                    seq=t.seq, keys=action.get('keys', (action.get('key'),)),
+                    duration_ms=action['duration'], first_change=action['first_change'],
+                    release_observed_at=action['release_observed_at'],
+                    settle_start_seq=action.get('settle_start_seq'), stable_intervals=action.get('settle_count'),
+                    displacement=t.point.distance(action['before'].point),
+                    angle=angle_error(t.facing, action['before'].facing))
             elif not self.controller.on_action_complete(t, now):
                 raise PicoError('控制器未接受定时按键后的观察帧')
             self.log.write('observed', seq=t.seq, action_seq=action['before'].seq,
@@ -528,17 +635,34 @@ class Runtime:
         if self.stop_requested.is_set():
             return
         status = self._poll_lease(now)
+        if self.stop_requested.is_set() or self.quit.is_set():
+            return
         if not self.lease.is_active:
             return
         if self.pending:
             self._lease_pending_step(t, now, status)
             return
+        if isinstance(self.lease, MotionClient) and not self.calibration_samples:
+            previous = self._calibration_baseline
+            if previous is None or (previous.session, previous.seq) != (t.session, t.seq):
+                stable = previous is not None and self._calibration_pose_stable(previous, t)
+                self._calibration_baseline_count = self._calibration_baseline_count + 1 if stable else 0
+                self._calibration_baseline = t
+            if self._calibration_baseline_count < 2:
+                self._status('calibrating', '正在确认角色静止；请松开游戏内的移动、转向按键和鼠标')
+                self._lease_renew(t, now)
+                return
+        if isinstance(self.lease,MotionClient) and len(self.calibration_samples)>=4:
+            return self._translation_calibrating_step(t,now)
         key = key_code(self.settings.left_key if len(self.calibration_samples) % 2 == 0 else self.settings.right_key)
+        self._status('calibrating', f'正在测量转向 {len(self.calibration_samples) + 1}/4；F12 可停止')
         sent_at = self._lease_send(t, now, key=key, duration=100)
         self.pending = {'key': key, 'duration': 100, 'before': t, 'sent': sent_at,
                         'lease_seq': self.lease.seq, 'calibration': True, 'first_change': None}
 
     def _lease_running_step(self, t, now):
+        if isinstance(self.lease, MotionClient):
+            return self._motion_running_step(t, now)
         if self.stop_requested.is_set():
             return
         status = self._poll_lease(now)
@@ -572,17 +696,97 @@ class Runtime:
         elif decision.kind == 'stop':
             self._halt(decision.reason, 'fault')
 
+    def _motion_bindings(self):
+        return tuple(key_code(getattr(self.settings,n)) for n in
+                     ('forward_key','left_key','right_key','strafe_left_key','strafe_right_key','walk_toggle_key'))
+
+    def _motion_running_step(self,t,now):
+        if self.stop_requested.is_set():return
+        status=self._poll_lease(now)
+        if not self.lease.is_active:return
+        if self._motion_usb_pending:
+            revision,sent=self._motion_usb_pending
+            submitted=status.submitted_revision if status else 0
+            if submitted==revision or forward_sequence(submitted,revision):self._motion_usb_pending=None
+            elif now-sent>=.18:raise PicoError('Pico 在 180 ms 内未确认任何新窗口已提交 USB，已停止')
+        if self.motion_worker is None:
+            self._halt('连续运动进程未准备好','fault');return
+        result=self.motion_worker.poll()
+        if result:
+            window,elapsed=result;source=window.source
+            age=time.monotonic()-source.captured_at
+            same=source.session==t.session and window.route_version==self.generation
+            speed_same=abs(source.speed-t.speed)<=max(.1,t.speed*.04) and source.ground_speed==t.ground_speed
+            # A window built from an old pose cannot be sent just because the
+            # newest screen frame is safe. Bound processing drift explicitly.
+            dt=t.captured_at-source.captured_at
+            pose_same=(source.c==t.c and source.z is not None and t.z is not None and dt>=0
+                and source.point.distance(t.point)<=max(source.speed,t.speed,source.ground_speed or 0)*dt+.10
+                and abs(source.z-t.z)<=max(source.speed,t.speed)*dt+.15)
+            usable=same and speed_same and pose_same and 0<=age<=.08 and abs(angle_error(source.facing,t.facing))<=.20
+            if window.kind!='window' or not usable:
+                self.log.write('motion_decision',decision_kind=window.kind,reason=window.reason,reason_code=window.reason_code,
+                    source=source,route_version=window.route_version,model_version=window.model_version,
+                    source_age_ms=age*1000,calculation_ms=elapsed,usable=usable,
+                    blocked_edge=window.blocked_edge,navigation=self.motion_worker.identity)
+            if usable and window.kind in ('stop','replan','arrived','settle'):
+                if window.kind=='arrived':self._halt(window.reason,'arrived')
+                elif window.kind=='settle':
+                    self._release();self._settling_frame=(t.session,t.seq);self._settling_at=now
+                    self._status('settling',window.reason)
+                elif window.kind=='replan':
+                    if window.blocked_edge:self.controller.blocked_edges.add(window.blocked_edge)
+                    self.log.write('replan',reason=window.reason,reason_code=window.reason_code,
+                        blocked_edge=window.blocked_edge,blocked_edges=sorted(self.controller.blocked_edges))
+                    decision=self.controller._replan(window.reason)
+                    if decision.kind=='stop':self._halt(decision.reason,'fault')
+                    else:self._release();self._request_plan(t.point)
+                else:self._halt(window.reason,'fault')
+                return
+            if usable and window.kind=='window' and window.frames:
+                foreground=self.capture.foreground()
+                with self.dispatch_lock:
+                    now=time.monotonic()
+                    if self.stop_requested.is_set() or self.quit.is_set():return
+                    if not foreground or not self.tracker.fresh(now) or unsafe_reason(t) or now-source.captured_at>.08:
+                        raise PicoError('运动窗口发令时已失效')
+                    self.lease.set_window(window.frames,now,event_id=window.event_id,
+                                          remaining_ms=max(20,min(200,round(200-age*1000))))
+                    if self._motion_usb_pending is None:self._motion_usb_pending=(self.lease.revision,now)
+                    self._lease_target=window.frames[0].keys
+                    self._lease_frame=(t.session,t.seq)
+                    self._motion_sent_frame=(source.session,source.seq)
+                    self._motion_last_window=window
+                    if window.event_id:
+                        self._motion_event_pending=window.event_id;self._motion_walk_attempted=True
+                self.log.write('motion_window',window=window,firmware_revision=self.lease.revision,
+                               firmware_identity=dict(boot=status.boot,epoch=status.epoch,session=status.session),
+                               calculation_ms=elapsed,source_age_ms=age*1000,navigation=self.motion_worker.identity)
+                if window.trajectory:self._emit('motion_trajectory',points=window.trajectory)
+                if window.reason:self._status('running',window.reason)
+        # Do not replace a one-shot toggle before USB acceptance is observed.
+        if self._motion_event_pending:
+            if status and status.applied_event==self._motion_event_pending:self._motion_event_pending=None
+        if not self._motion_event_pending:
+            self.motion_worker.submit(t,status.keys if status else (),status.applied_event if status else 0)
+        self._lease_renew(t,time.monotonic())
+
     def _finish_calibration_sample(self, t, now):
         action = self.pending
+        if action.get('translation'):
+            return self._finish_translation_sample(t,now)
         delta = angle_error(t.facing, action['before'].facing)
         left = action['key'] == key_code(self.settings.left_key)
         if abs(delta) < math.radians(1) or (delta > 0) != left:
-            raise PicoError('校准未观察到正确转向；检查 A/D 是否绑定为转向、游戏焦点及鼠标右键状态')
+            raise PicoError(f'校准未观察到正确转向；检查 {self.settings.left_key}/{self.settings.right_key} 是否绑定为转向、游戏焦点及鼠标右键状态')
+        if t.point.distance(action['before'].point) > .12:
+            raise PicoError('转向校准时角色发生了位移；请检查转向绑定并松开其他按键')
         rate = abs(delta) / (action['duration'] / 1000)
         if not .1 < rate < 12:
             raise PicoError('转向速率异常，请检查按键绑定后重新校准')
         latency = max(0.0, (action['first_change'] or now) - action['sent'])
-        self.calibration_samples.append((left, rate, min(.25, latency)))
+        if latency>.25:raise PicoError('实测输入生效延迟超过 250 ms，拒绝保存低估的延迟模型')
+        self.calibration_samples.append((left, rate, latency))
         if len(self.calibration_samples) == 4:
             for direction in (True, False):
                 rates = [sample[1] for sample in self.calibration_samples if sample[0] == direction]
@@ -592,12 +796,83 @@ class Runtime:
             right_rate = statistics.mean(v[1] for v in self.calibration_samples if not v[0])
             calibration = Calibration(left_rate, right_rate,
                                       statistics.median(v[2] for v in self.calibration_samples))
+            if isinstance(self.lease,MotionClient):
+                # A yaw-only result must never make the UI/runtime look ready.
+                # Publish both models together after all translation samples.
+                self._calibration_candidate = calibration
+                self._status('calibrating','转速测量完成，正在验证平移测试区域')
+                return
             self.controller.set_calibration(calibration)
             self.settings.calibration = asdict(calibration)
             self.settings.save()
             self.log.write('calibration', calibration=calibration)
             self._emit('calibrated', calibration=self.settings.calibration)
             self._status('monitoring', f'校准完成：左转 {math.degrees(left_rate):.1f}°/秒，右转 {math.degrees(right_rate):.1f}°/秒')
+
+    def _translation_calibrating_step(self,t,now):
+        if t.protocol_version!=4 or t.z is None or not t.ground_speed or t.environment&8:
+            raise PicoError('平移校准需要 v4 速度遥测和已确定的地面')
+        if self._calibration_candidate is None:
+            raise PicoError('转向候选校准已失效，请重新校准')
+        profile=MotionProfile.from_calibration(self._calibration_candidate)
+        radius=t.ground_speed*(.12+profile.latency+.08)+.2
+        if radius>4:raise PicoError('当前速度过高，无法认证平移校准区域，请减速后重试')
+        if self.motion_worker is None:
+            self.motion_worker=MotionWorker(Route(t.point,t.point,()),profile,self._motion_bindings(),
+                self.bundle.asset_root/'navigation/manifest.json',self.generation)
+        result=self.motion_worker.poll()
+        if result and result[0]=='probe':
+            _,source,clearance,valid=result
+            if not valid:raise PicoError('当前位置周围净空不足，请换到空旷地面校准')
+            if source.session==t.session and source.point.distance(t.point)<.07 and now-source.captured_at<.15 and clearance>=radius-.01:
+                forward,_,_,left,right,_=self._motion_bindings()
+                keys=((left,),(right,),(forward,left),(forward,right))[len(self.movement_samples)%4]
+                self._status('calibrating', f'正在测量平移与斜向前进 {len(self.movement_samples) + 1}/8；F12 可停止')
+                sent=self._lease_send(t,now,keys=keys,duration=120)
+                self.pending=dict(keys=keys,duration=120,before=t,sent=sent,lease_seq=self.lease.seq,
+                    calibration=True,translation=True,first_change=None)
+                return
+        self.motion_worker.probe(t,radius)
+        self._lease_renew(t,now)
+
+    def _finish_translation_sample(self,t,now):
+        action=self.pending;before=action['before'];distance=t.point.distance(before.point)
+        calibration = self._calibration_candidate
+        if calibration is None:
+            raise PicoError('转向候选校准已失效，请重新校准')
+        if not .12<distance<before.ground_speed*(.12+calibration.input_latency_s+.08)+.2:
+            raise PicoError('平移校准位移异常，请检查按键绑定及地面阻挡')
+        if abs(angle_error(t.facing,before.facing))>math.radians(3):
+            raise PicoError(f'平移改变了朝向，请将 {self.settings.strafe_left_key}/{self.settings.strafe_right_key} 绑定为平移')
+        direction=angle_error(math.atan2(t.y-before.y,t.x-before.x),before.facing)
+        expected=(math.pi/2,-math.pi/2,math.pi/4,-math.pi/4)[len(self.movement_samples)%4]
+        if abs(angle_error(direction,expected))>math.radians(22):
+            raise PicoError('实测平移方向与绑定不符，请检查按键')
+        self.movement_samples.append(direction)
+        if len(self.movement_samples)==8:
+            if any(abs(angle_error(self.movement_samples[i],self.movement_samples[i+4]))>math.radians(12) for i in range(4)):
+                raise PicoError('重复平移校准差异过大，请在空旷地面重试')
+            names=('strafe_left_angle','strafe_right_angle','diagonal_left_angle','diagonal_right_angle')
+            movement={n:statistics.mean((self.movement_samples[i],self.movement_samples[i+4])) for i,n in enumerate(names)}
+            movement['strafe_verified']=True
+            updated = replace(self.settings, calibration=asdict(calibration), movement_calibration=movement)
+            # This acceptance point is ordered with command(stop/configure).
+            # A stop already received discards the candidate; a later stop
+            # cannot retroactively undo a completed measurement. Disk I/O is
+            # outside the dispatch lock, so it cannot block an urgent stop.
+            with self.dispatch_lock:
+                if (self.stop_requested.is_set() or self.quit.is_set()
+                        or self._calibration_epoch != self.control_epoch):
+                    self._calibration_candidate = None
+                    return
+                self._calibration_candidate = None
+            updated.save()
+            self.settings.calibration = updated.calibration
+            self.settings.movement_calibration = updated.movement_calibration
+            self.controller.set_calibration(calibration)
+            self.log.write('calibration',calibration=self.settings.calibration,movement_calibration=self.settings.movement_calibration)
+            self._emit('calibrated',calibration=self.settings.calibration,movement_calibration=self.settings.movement_calibration)
+            self._status('monitoring','转速、输入延迟、纯平移和斜向前进校准完成')
 
     def _pending_step(self, t: Telemetry, now: float):
         action = self.pending
@@ -628,9 +903,15 @@ class Runtime:
             if reason:
                 self._halt(reason + '，已暂停；恢复后请手动继续')
                 return
+            if isinstance(self.lease,MotionClient) and t.protocol_version!=4:
+                self._halt('请更新 v4 速度遥测插件并重新加载');return
+            if (self.state=='calibration_armed' and isinstance(self.lease,MotionClient)
+                    and (t.z is None or not t.ground_speed)):
+                self._halt('校准需要插件有效地面速度能力和已确定的楼层');return
             if self.state == 'armed':
-                if not self.settings.calibration:
-                    self._halt('请先完成转向校准')
+                reason = self._calibration_required_reason()
+                if reason:
+                    self._halt(reason)
                 else:
                     self._request_plan(t.point)
             else:
@@ -655,6 +936,16 @@ class Runtime:
         reason = unsafe_reason(t)
         if reason:
             self._halt(reason + '，已暂停')
+            return
+        if self.state=='settling':
+            if (t.session,t.seq)==self._settling_frame:return
+            if t.speed<=.05:
+                goal=self.route.goal
+                if t.point.distance(goal)<=.6 and t.z is not None and goal.z is not None and abs(t.z-goal.z)<=1:
+                    self._halt('已停止并确认到达终点（0.6 码范围内）','arrived')
+                else:self._halt('已停止，但终点位置误差超过 0.6 码；请检查延迟模型后继续')
+            elif now-self._settling_at>.25+Calibration(**self.settings.calibration).input_latency_s:
+                self._halt('释放后仍未确认停止，请检查输入延迟和游戏状态')
             return
         if self.state == 'running' and self.lease:
             self._lease_running_step(t, now)
@@ -684,6 +975,11 @@ class Runtime:
                 self.task_new = False
                 self.log.write('route', route=route)
                 self._emit('route', route=route)
+                if isinstance(self.lease,MotionClient):
+                    profile=MotionProfile.from_calibration(Calibration(**self.settings.calibration),self.settings.movement_calibration)
+                    profile=replace(profile,walk_toggle_allowed=not self._motion_walk_attempted)
+                    self.motion_worker=MotionWorker(route,profile,self._motion_bindings(),
+                        self.bundle.asset_root/'navigation/manifest.json',self.generation)
                 if self.lease:
                     with self.dispatch_lock:
                         if self.stop_requested.is_set() or self.quit.is_set():
@@ -692,7 +988,7 @@ class Runtime:
                     self._lease_target = ()
                     self._lease_frame = None
                     self._lease_application = None
-                    self._status('running', '正在建立连续控制会话；支持 ADR v3 的固件就绪后行走')
+                    self._status('running', '正在建立 ADRV v4 连续控制会话；固件和轨迹就绪后行走')
                 else:
                     self._status('running', '正在沿路线行走；F8 暂停，F12 停止')
             return
@@ -730,7 +1026,7 @@ class Runtime:
                     now = time.monotonic()
                     self._loop_phase(phases, 'telemetry_ms', self._accept_sample, sample, now)
                     self._loop_phase(phases, 'control_ms', self._active_step, self.tracker.latest, time.monotonic())
-                    if self.lease and self.state not in ACTIVE:
+                    if self.lease and (self.state not in ACTIVE or self.state=='settling'):
                         # STOP retries are safe and session-scoped. They cannot
                         # renew keys or reopen the halted session.
                         self._loop_phase(phases, 'inactive_lease_ms', self._poll_lease, time.monotonic())
@@ -820,5 +1116,10 @@ class Runtime:
                     self._halt('检测到地图切换或位置突变，需手动继续')
             self.log.write('telemetry', telemetry=sample)
             self._emit('telemetry', telemetry=sample)
+            if sample.region_name and (previous is None or (sample.ui_map, sample.zone_token) != (previous.ui_map, previous.zone_token)):
+                self.log.write('region_transition', ui_map=sample.ui_map, zone_token=sample.zone_token,
+                               region=sample.region_name, floor_candidates=sample.floor_candidates,
+                               height_source=sample.height_source)
+                self._emit('message', text='当前区域：' + sample.region_name)
             if sample.height_source != 'raw' and (previous is None or previous.height_source != sample.height_source):
                 self._emit('message', text=height_status(sample))

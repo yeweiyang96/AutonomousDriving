@@ -32,7 +32,7 @@ def route_from_dict(value: dict) -> Route:
         points = tuple(_point(p) for p in s['points'])
         if len(points) < 2 or any(p.c != start.c for p in points) or previous.distance(points[0]) > .001:
             raise ValueError('路线不连续')
-        if s['reliability'] not in ('reviewed', 'candidate', 'terrain', 'navmesh') or \
+        if s['reliability'] not in ('road', 'reviewed', 'candidate', 'terrain', 'navmesh') or \
                 not isinstance(s['source'], str) or not isinstance(s['edge_id'], str):
             raise ValueError('路线来源无效')
         segments.append(Segment(points, s['source'], s['reliability'], s['edge_id']))
@@ -58,9 +58,24 @@ def telemetry_from_dict(value: dict) -> Telemetry:
         raise ValueError('遥测高度无效')
     if value.get('raw_z') is not None and not _number(value['raw_z']):
         raise ValueError('遥测原始高度无效')
-    if value.get('height_source', 'raw') not in ('raw', 'client', 'navmesh', 'ambiguous', 'unavailable'):
+    if value.get('height_source', 'raw') not in ('raw', 'client', 'navmesh', 'trajectory', 'ambiguous', 'unavailable'):
         raise ValueError('遥测高度来源无效')
-    return Telemetry(**{**value, 'flags': Flags(value['flags'])})
+    if type(value.get('zone_token', 0)) is not int or not 0 <= value.get('zone_token', 0) <= 0xFFFFFFFF:
+        raise ValueError('区域标识无效')
+    if type(value.get('environment', 0)) is not int or not 0 <= value.get('environment', 0) <= 15:
+        raise ValueError('环境标识无效')
+    if not isinstance(value.get('floor_candidates', ()), (list, tuple)) or any(not _number(h) for h in value.get('floor_candidates', ())):
+        raise ValueError('候选楼层无效')
+    if not isinstance(value.get('region_name', ''), str):
+        raise ValueError('区域名称无效')
+    if value.get('protocol_version',3) not in (3,4) or (value.get('ground_speed') is not None and
+            (not _number(value['ground_speed']) or value['ground_speed']<=0)):
+        raise ValueError('运动速度遥测无效')
+    if value.get('mounted') is not None and type(value['mounted']) is not bool:
+        raise ValueError('骑乘状态无效')
+    return Telemetry(**{**value, 'flags': Flags(value['flags']),
+                       'protocol_version':value.get('protocol_version',3),
+                       'floor_candidates': tuple(value.get('floor_candidates', ()))})
 
 
 @dataclass

@@ -49,6 +49,13 @@ class Telemetry:
     # Desktop provenance only; never changes the game's telemetry wire format.
     raw_z: float | None = None
     height_source: str = "raw"  # raw | client | navmesh | ambiguous | unavailable
+    zone_token: int = 0  # Hash of real zone + subzone; context, never a floor ID.
+    environment: int = 0  # indoor-known, indoors, falling-known, falling
+    floor_candidates: tuple[float, ...] = ()
+    region_name: str = ''
+    protocol_version: int = 4
+    ground_speed: float | None = None
+    mounted: bool | None = None
 
     @property
     def point(self) -> Point:
@@ -59,7 +66,7 @@ class Telemetry:
 class Segment:
     points: tuple[Point, ...]
     source: str
-    reliability: str  # reviewed | candidate | terrain | navmesh
+    reliability: str  # road | navmesh; reviewed/candidate/terrain: historical logs only
     edge_id: str
 
     @property

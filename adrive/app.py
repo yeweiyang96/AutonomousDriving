@@ -10,20 +10,21 @@ import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
-from .capture import enable_dpi_awareness, list_game_windows
+from .capture import CaptureError, enable_dpi_awareness, list_game_windows
 from .data import DataBundle
 from .hotkeys import Hotkeys
 from .mapview import MapView
 from .models import Flags, Point, Telemetry
 from .planning_worker import IsolatedPlanner as Planner
 from .replay import Replay, route_from_dict, telemetry_from_dict
-from .settings import ROOT, Settings
+from .settings import ROOT, Settings, calibration_required_reason, calibration_status_text
+from .window_focus import focus_game_window
 
 
-STATE_NAMES = {'monitoring': '监测中', 'armed': '等待游戏', 'planning': '规划中',
-               'running': '行走中', 'calibration_armed': '等待校准', 'calibrating': '校准中',
+STATE_NAMES = {'monitoring': '监测中', 'focusing': '切回游戏中', 'armed': '等待游戏', 'planning': '规划中',
+               'running': '行走中', 'settling': '确认停止', 'calibration_armed': '等待校准', 'calibrating': '校准中',
                'paused': '已暂停', 'stopped': '已停止', 'arrived': '已到达', 'fault': '需要处理'}
-ACTIVE_STATES = {'armed', 'planning', 'running', 'calibration_armed', 'calibrating'}
+ACTIVE_STATES = {'focusing', 'armed', 'planning', 'running', 'settling', 'calibration_armed', 'calibrating'}
 
 
 def point_text(p):
@@ -49,6 +50,7 @@ class Application:
         self.replay_job = None
         self.state = 'monitoring'
         self.closed = False
+        self._focus_pending = None
         try:
             self.settings = Settings.load()
         except (OSError, ValueError, TypeError) as exc:
@@ -64,7 +66,7 @@ class Application:
             from .runtime import Runtime
             self.runtime = Runtime(bundle, self.settings, self.events)
             self.runtime.start()
-            self.hotkeys = Hotkeys(lambda cmd: self.runtime.command(cmd),
+            self.hotkeys = Hotkeys(self.send,
                                    lambda text: self.events.put({'kind': 'message', 'text': text}))
             self.hotkeys.start()
         else:
@@ -139,16 +141,14 @@ class Application:
             line = ttk.Frame(sidebar)
             line.pack(fill='x', pady=2)
             ttk.Label(line, text=f'{name} 地面高度').pack(side='left')
-            value = tk.StringVar(value='自动（单层地面）')
-            box = ttk.Combobox(line, textvariable=value, values=['自动（单层地面）'], state='readonly', width=17)
+            value = tk.StringVar(value='自动识别地面')
+            box = ttk.Combobox(line, textvariable=value, values=['自动识别地面'], state='readonly', width=17)
             box.pack(side='right')
             box.bind('<<ComboboxSelected>>', lambda _, n=name: self.select_height(n))
             self.height_vars[name], self.height_boxes[name], self.height_values[name] = value, box, {}
         ttk.Button(sidebar, text='起点恢复为实时位置', command=self.clear_start).pack(fill='x', pady=5)
         self.candidates_var = tk.BooleanVar(value=self.settings.allow_candidates)
-        ttk.Checkbutton(sidebar, text='允许候选地面道路', variable=self.candidates_var,
-                        command=self.change_policy).pack(anchor='w', pady=4)
-        ttk.Label(sidebar, text='蓝色实线：静态碰撞导航\n紫色虚线：旧地形估算\n多层位置需选择高度；实际行走仍需验证',
+        ttk.Label(sidebar, text='细实线：道路；灰虚线：道路连接参考\n蓝色粗线：碰撞导航生成的实际路线\n道路和连接均须碰撞验证后执行\n实时楼层随轨迹自动识别\n终点自动选择较近的可达地面；实际行走仍需验证',
                   style='Hint.TLabel', wraplength=275).pack(anchor='w', pady=(0, 8))
         ttk.Button(sidebar, text='预览路线', command=self.preview).pack(fill='x')
         self.route_var = tk.StringVar(value='选择目的地后预览距离与路线来源')
@@ -173,13 +173,14 @@ class Application:
         keys = ttk.Frame(sidebar)
         keys.pack(fill='x', pady=8)
         self.key_vars = []
-        for text, value in [('前进', self.settings.forward_key), ('左转', self.settings.left_key), ('右转', self.settings.right_key)]:
-            ttk.Label(keys, text=text).pack(side='left', padx=(0, 3))
+        for index,(text, value) in enumerate([('前进', self.settings.forward_key), ('左转', self.settings.left_key), ('右转', self.settings.right_key),
+                            ('左平移',self.settings.strafe_left_key),('右平移',self.settings.strafe_right_key),('走跑',self.settings.walk_toggle_key)]):
+            ttk.Label(keys, text=text).grid(row=index//3*2,column=index%3,padx=3,sticky='w')
             variable = tk.StringVar(value=value)
             self.key_vars.append(variable)
-            ttk.Entry(keys, textvariable=variable, width=4).pack(side='left', padx=(0, 7))
-        self.calibration_var = tk.StringVar(value='已保存校准' if self.settings.calibration else '尚未校准')
-        ttk.Button(sidebar, text='原地转向校准', command=self.calibrate).pack(fill='x')
+            ttk.Entry(keys, textvariable=variable, width=13 if index==5 else 7).grid(row=index//3*2+1,column=index%3,padx=3,sticky='w')
+        self.calibration_var = tk.StringVar(value=calibration_status_text(self.settings))
+        ttk.Button(sidebar, text='转向与平移校准 · 需要空旷地面', command=self.calibrate).pack(fill='x')
         ttk.Label(sidebar, textvariable=self.calibration_var, style='Hint.TLabel', wraplength=275).pack(anchor='w', pady=4)
         ttk.Separator(action_panel).pack(fill='x', pady=(0, 8))
         self.start_button = ttk.Button(action_panel, text='开始 · 从实时位置重新规划', style='Accent.TButton', command=self.start)
@@ -226,8 +227,8 @@ class Application:
             return
         self.cancel_preview()
         name = 'A' if start else 'B'
-        self.height_vars[name].set('自动（单层地面）')
-        self.height_boxes[name]['values'] = ['自动（单层地面）']
+        self.height_vars[name].set('自动识别地面')
+        self.height_boxes[name]['values'] = ['自动识别地面']
         self.height_values[name] = {}
         if start:
             self.preview_start = point
@@ -277,7 +278,7 @@ class Application:
         self.preview_start = None
         self.map.start = None
         self.start_var.set('A  使用实时位置')
-        self.height_vars['A'].set('自动（单层地面）')
+        self.height_vars['A'].set('自动识别地面')
         self.cancel_preview()
         self.map.set_route(None)
 
@@ -307,6 +308,11 @@ class Application:
         if not start:
             self.log('尚无实时位置，请 Shift+单击地图设预览起点 A。')
             return
+        if not self.preview_start and self.latest.height_source in ('ambiguous', 'unavailable'):
+            from .height import height_status
+            self.route_var.set(height_status(self.latest))
+            self.log(height_status(self.latest))
+            return
         self.cancel_preview()
         generation = self.preview_generation
         self.preview_cancel = threading.Event()
@@ -323,12 +329,15 @@ class Application:
 
     def _apply_settings(self):
         values = [v.get().strip().upper() for v in self.key_vars]
-        changed_binding = values != [self.settings.forward_key, self.settings.left_key, self.settings.right_key] or \
+        changed_binding = values[:5] != [self.settings.forward_key, self.settings.left_key, self.settings.right_key,
+                                     self.settings.strafe_left_key,self.settings.strafe_right_key] or \
             self.window_var.get().strip() != self.settings.window_title
         settings = Settings(host=self.host_var.get().strip(), port=int(self.port_var.get()),
                             window_title=self.window_var.get().strip(), forward_key=values[0],
                             left_key=values[1], right_key=values[2], allow_candidates=self.candidates_var.get(),
-                            calibration=None if changed_binding else self.settings.calibration)
+                            calibration=None if changed_binding else self.settings.calibration,
+                            strafe_left_key=values[3],strafe_right_key=values[4],walk_toggle_key=values[5],
+                            movement_calibration=None if changed_binding else self.settings.movement_calibration)
         settings.validate()
         if settings != self.settings:
             settings.save()
@@ -336,10 +345,15 @@ class Application:
             self.device_diagnostic_var.set('尚未读取固件版本与能力')
             if self.runtime:
                 self.runtime.command('configure', settings=settings)
+        self.calibration_var.set(calibration_status_text(settings))
         return settings
 
     def send(self, command):
+        if getattr(self, 'closed', False):
+            return
         if self.runtime:
+            if command == 'toggle' and getattr(self, '_focus_pending', None) is not None:
+                command = 'pause'  # F8 cancels preflight instead of resuming an old route.
             self.runtime.command(command)
         else:
             self.log('当前为离线模式，不发送设备指令。')
@@ -352,34 +366,94 @@ class Application:
             self.log(str(exc))
 
     def calibrate(self):
+        self._cancel_focus_request()
         try:
             self._apply_settings()
             if self.runtime:
-                self.state = 'calibration_armed'
-            self.send('calibrate')
-        except (ValueError, OSError) as exc:
+                self._focus_and_command('calibrate')
+            else:
+                self.send('calibrate')
+        except (ValueError, OSError, CaptureError) as exc:
+            self.status_var.set(str(exc))
+            self.log(str(exc))
+
+    def _focus_and_command(self, kind, **values):
+        # Cancel any older input intent before returning focus to the game.
+        # A stop received during activation wins over this button click.
+        epoch = self.runtime.command('pause')
+        # Publish the token BEFORE the native call, so F8 also cancels while
+        # Windows is still processing activation on this UI thread.
+        pending = [self.runtime, epoch, kind, values, None]
+        self._focus_pending = pending
+        self.state = 'focusing'
+        self.status_var.set('正在确认游戏前台；确认后开始，F8/F12 可取消')
+        try:
+            pending[4] = focus_game_window(self.settings.window_title)
+        except (OSError, CaptureError):
+            if self._focus_pending is pending:
+                self._focus_pending = None
+                self.state = 'paused'
+            raise
+        self._poll_focus_command(pending)
+
+    def _cancel_focus_request(self):
+        pending = getattr(self, '_focus_pending', None)
+        if pending is not None:
+            self._focus_pending = None
+            pending[0].command('pause')
+            self.state = 'paused'
+
+    def _poll_focus_command(self, pending):
+        if getattr(self, '_focus_pending', None) is not pending:
+            return
+        runtime, epoch, kind, values, request = pending
+        if (self.closed or self.runtime is not runtime or runtime.control_epoch != epoch
+                or runtime.quit.is_set()):
+            self._focus_pending = None
+            if not self.closed:
+                self.state = 'paused'
+                self.status_var.set('操作已取消；未开始新的导航或校准')
+            return
+        try:
+            if not request.poll():
+                self.root.after(20, self._poll_focus_command, pending)
+                return
+            accepted = runtime.command(kind, _expected_epoch=epoch, **values) is not None
+            self._focus_pending = None
+            self.state = ('armed' if kind == 'arm' else 'calibration_armed') if accepted else 'paused'
+            if not accepted:
+                self.status_var.set('操作已取消；未开始新的导航或校准')
+        except (OSError, CaptureError) as exc:
+            self._focus_pending = None
+            self.state = 'paused'
+            self.status_var.set(str(exc))
             self.log(str(exc))
 
     def start(self):
+        self._cancel_focus_request()
         if not self.map.goal:
             self.log('请先选择终点 B。')
             return
         try:
-            self._apply_settings()
+            settings = self._apply_settings()
+            reason = calibration_required_reason(settings)
+            if reason:
+                self.status_var.set(reason)
+                self.log(reason)
+                return
             if self.runtime:
                 self.cancel_preview()
-                self.state = 'armed'
-                self.runtime.command('arm', goal=self.map.goal, allow_candidates=self.candidates_var.get())
+                self._focus_and_command('arm', goal=self.map.goal, allow_candidates=self.candidates_var.get())
             else:
                 self.log('离线模式不能开始实际行走。请用正常启动方式打开客户端。')
-        except (ValueError, OSError) as exc:
+        except (ValueError, OSError, CaptureError) as exc:
+            self.status_var.set(str(exc))
             self.log(str(exc))
 
     def _show_route(self, route):
         self.map.set_route(route)
-        estimated = sum(s.distance for s in route.segments if s.reliability in ('candidate', 'terrain'))
         precise = sum(s.distance for s in route.segments if s.reliability == 'navmesh')
-        self.route_var.set(f'总长 {route.distance:,.0f} 码\n静态碰撞导航 {precise:,.0f} 码\n候选 / 地形估算 {estimated:,.0f} 码\n搜索展开 {route.expanded:,} 次')
+        self.route_var.set(f'总长 {route.distance:,.0f} 码\n静态碰撞导航 {precise:,.0f} 码\n沿统一道路行走\n搜索展开 {route.expanded:,} 次')
 
     def poll(self):
         if self.closed:
@@ -398,9 +472,9 @@ class Application:
                     if point == event['point']:
                         values = {f'高度 {h:.2f} 码': h for h in event['heights']}
                         self.height_values[name] = values
-                        self.height_boxes[name]['values'] = ['自动（单层地面）', *values]
+                        self.height_boxes[name]['values'] = ['自动识别地面', *values]
                         if len(values)>1:
-                            self.log(f'{name} 有 {len(values)} 层可步行地面，请在高度列表选择。')
+                            self.log(f'{name} 有 {len(values)} 层可步行地面；终点将按完整步行连接自动选择。')
                         elif not values:
                             self.log(f'{name} 不在已知可步行表面内，请调整选点。')
                     continue
@@ -424,6 +498,8 @@ class Application:
                     self.map.start = event['route'].start
                     self.start_var.set('A  执行起点 ' + point_text(self.map.start))
                     self._show_route(event['route'])
+                elif kind == 'motion_trajectory':
+                    self.map.set_motion(event['points'])
                 elif kind == 'message':
                     self.log(event['text'])
                 elif kind == 'device_diagnostic':
@@ -432,12 +508,22 @@ class Application:
                 elif kind == 'device_diagnostic_reset':
                     self.device_diagnostic_var.set('尚未读取固件版本与能力')
                 elif kind == 'status':
+                    # Runtime is intentionally paused during focus preflight;
+                    # keep route editing locked until this UI request resolves.
+                    if getattr(self, '_focus_pending', None) is not None:
+                        continue
                     self.state = event['state']
                     self.state_var.set(STATE_NAMES.get(self.state, self.state))
                     self.status_var.set(event['reason'] + '\n' + event['capture'])
+                    self.calibration_var.set(calibration_status_text(self.settings))
+                elif kind == 'calibration_reset':
+                    self.settings.calibration = None
+                    self.settings.movement_calibration = None
+                    self.calibration_var.set(calibration_status_text(self.settings))
                 elif kind == 'calibrated':
                     self.settings.calibration = event['calibration']
-                    self.calibration_var.set('校准已保存；修改转向速度或按键后需重做')
+                    self.settings.movement_calibration = event.get('movement_calibration')
+                    self.calibration_var.set(calibration_status_text(self.settings))
         except queue.Empty:
             pass
         if pose_changed:
@@ -501,13 +587,14 @@ class Application:
         if self.closed:
             return
         self.closed = True
+        self._focus_pending = None
         self.cancel_preview()
         if self.replay_job:
             self.root.after_cancel(self.replay_job)
-        if self.hotkeys:
-            self.hotkeys.close()
         if self.runtime:
             self.runtime.close()
+        if self.hotkeys:
+            self.hotkeys.close()
         self.executor.shutdown(wait=False, cancel_futures=True)
         self.root.destroy()
 

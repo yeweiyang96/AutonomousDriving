@@ -144,6 +144,16 @@ class RuntimeTests(unittest.TestCase):
     def sample(self, seq=1, x=0., y=0., facing=0., flags=Flags.VALID, session=1):
         return Telemetry(session, seq, 0, 1429, x, y, facing, 7., flags, self.clock())
 
+    def test_ambiguous_floor_waits_without_planning_or_input(self):
+        runtime = self.make_runtime()
+        sample = replace(self.sample(), height_source='ambiguous', floor_candidates=(10., 20.))
+        runtime.tracker.accept(sample, self.clock())
+        runtime.goal = Point(0, 100, 0)
+        runtime._request_plan(sample.point)
+        self.assertEqual(runtime.state, 'armed')
+        self.assertIsNone(runtime.future)
+        self.assertEqual(runtime.pico.actions, [])
+
     def feed(self, runtime, **kw):
         t = self.sample(**kw)
         self.assertTrue(runtime.tracker.accept(t, self.clock()))
@@ -414,6 +424,23 @@ class RuntimeTests(unittest.TestCase):
         self.assertIsNone(runtime.settings.calibration)
         self.assertIsNone(runtime.controller.calibration)
         self.assertEqual(runtime.state, "monitoring")
+
+    def test_walk_toggle_change_preserves_measured_motion_and_stops_old_session(self):
+        runtime = self.make_runtime()
+        movement = dict(strafe_left_angle=math.pi/2,strafe_right_angle=-math.pi/2,
+                        diagonal_left_angle=math.pi/4,diagonal_right_angle=-math.pi/4,strafe_verified=True)
+        runtime.settings.movement_calibration=movement
+        calibration=runtime.settings.calibration.copy()
+        self.running(runtime)
+        replacement=replace(runtime.settings,walk_toggle_key=']')
+        runtime.command('configure',settings=replacement)
+        runtime._commands()
+        self.assertEqual(runtime.settings.walk_toggle_key,']')
+        self.assertEqual(runtime._motion_bindings()[-1],48)
+        self.assertEqual(runtime.settings.calibration,calibration)
+        self.assertEqual(runtime.settings.movement_calibration,movement)
+        self.assertEqual(runtime.state,'monitoring')
+        self.assertIsNone(runtime.controller.route)
 
     def test_older_arm_cannot_clear_a_later_stop_request(self):
         runtime = self.make_runtime()

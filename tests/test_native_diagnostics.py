@@ -89,8 +89,8 @@ class NativeDiagnosticTests(unittest.TestCase):
 
     def test_native_capabilities_ranges_and_read_only_query_does_not_open(self):
         d = self.diagnostic(1000)
-        self.assertEqual(d.version, '0.5.1')
-        self.assertEqual(d.capabilities, 63)
+        self.assertEqual(d.version, '0.6.0')
+        self.assertEqual(d.capabilities, 127)
         self.assertEqual(d.compatibility_issues(), ())
         self.assertFalse(d.stop.valid)
         self.assertFalse(d.submitted.valid)

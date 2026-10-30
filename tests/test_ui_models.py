@@ -20,10 +20,16 @@ from adrive.mapview import MapView, Viewport
 from adrive.models import Flags, Point, Route, Segment, Telemetry
 from adrive.planner import Planner
 from adrive.replay import Replay, route_from_dict, telemetry_from_dict
-from adrive.settings import Settings, key_code
+from adrive.settings import (Settings, calibration_required_reason, calibration_state,
+                             calibration_status_text, key_code)
 
 
 CALIBRATION = {"left_rate_rad_s": 2.5, "right_rate_rad_s": 2.6, "input_latency_s": .03}
+MOVEMENT_CALIBRATION = {
+    'strafe_left_angle': math.pi / 2, 'strafe_right_angle': -math.pi / 2,
+    'diagonal_left_angle': math.pi / 4, 'diagonal_right_angle': -math.pi / 4,
+    'strafe_verified': True,
+}
 
 
 def temporary_workspace():
@@ -116,7 +122,8 @@ class ViewportTests(unittest.TestCase):
 
 class SettingsTests(unittest.TestCase):
     def test_key_usage_codes_and_normalisation(self):
-        self.assertEqual([key_code(k) for k in ("W", "a", " D ", "UP", "LEFT")], [26, 4, 7, 82, 80])
+        self.assertEqual([key_code(k) for k in ("W", "a", " D ", "UP", "LEFT", "[", " ] ", "/", "NUMPAD_DIVIDE")],
+                         [26, 4, 7, 82, 80, 47, 48, 56, 84])
         for value in ("", "F12", "CTRL", "AA"):
             with self.subTest(value=value), self.assertRaises(ValueError):
                 key_code(value)
@@ -151,14 +158,18 @@ class SettingsTests(unittest.TestCase):
                 Settings(calibration=calibration).validate()
 
     def test_apply_binding_or_window_change_invalidates_old_calibration(self):
-        for keys, window, expect_clear in ((('W', 'A', 'D'), 'World of Warcraft', False),
-                                           (('UP', 'LEFT', 'RIGHT'), 'World of Warcraft', True),
-                                           (('W', 'A', 'D'), 'Forever', True)):
+        for keys, window, expect_clear in ((('W', 'A', 'D', 'Q', 'E', 'NUMPAD_DIVIDE'), 'World of Warcraft', False),
+                                           (('UP', 'LEFT', 'RIGHT', 'Q', 'E', 'NUMPAD_DIVIDE'), 'World of Warcraft', True),
+                                           (('W', 'A', 'D', 'Q', 'E', 'NUMPAD_DIVIDE'), 'Forever', True),
+                                           (('W', 'A', 'D', 'Z', 'X', 'NUMPAD_DIVIDE'), 'World of Warcraft', True),
+                                           (('W', 'A', 'D', 'Q', 'E', 'R'), 'World of Warcraft', False),
+                                           (('W', 'A', 'D', 'Q', 'E', ']'), 'World of Warcraft', False)):
             with self.subTest(keys=keys, window=window):
                 app = Application.__new__(Application)
-                app.settings = Settings(calibration=CALIBRATION.copy())
+                app.settings = Settings(calibration=CALIBRATION.copy(), movement_calibration=MOVEMENT_CALIBRATION.copy())
                 app.runtime = Mock()
                 app.device_diagnostic_var = Mock()
+                app.calibration_var = Mock()
                 app.key_vars = [Mock(get=Mock(return_value=k)) for k in keys]
                 app.window_var = Mock(get=Mock(return_value=window))
                 app.host_var = Mock(get=Mock(return_value=app.settings.host))
@@ -167,13 +178,99 @@ class SettingsTests(unittest.TestCase):
                 with patch.object(Settings, 'save'):
                     new = app._apply_settings()
                 self.assertEqual(new.calibration is None, expect_clear)
-                if expect_clear:
+                self.assertEqual(new.movement_calibration is None, expect_clear)
+                app.calibration_var.set.assert_called_once_with(calibration_status_text(new))
+                if expect_clear or keys[-1]!='NUMPAD_DIVIDE':
                     app.runtime.command.assert_called_once_with('configure', settings=new)
                 else:
                     app.runtime.command.assert_not_called()
 
+    def test_readiness_distinguishes_missing_old_and_complete_calibration(self):
+        for turn, movement, expected in ((None, None, 'none'),
+                                         (None, MOVEMENT_CALIBRATION, 'none'),
+                                         (CALIBRATION, None, 'turn_only'),
+                                         (CALIBRATION, MOVEMENT_CALIBRATION, 'complete')):
+            with self.subTest(expected=expected, turn=turn, movement=movement):
+                settings = Settings(calibration=turn, movement_calibration=movement)
+                settings.validate()
+                self.assertEqual(calibration_state(settings), expected)
+                reason = calibration_required_reason(settings)
+                if expected == 'complete':
+                    self.assertIsNone(reason)
+                    self.assertIn('转向与平移校准已保存', calibration_status_text(settings))
+                else:
+                    self.assertIn('点击“转向与平移校准”', reason)
+                    self.assertIn('自动切回游戏', reason)
+                    self.assertIn('空旷地面', reason)
+                    self.assertNotIn('已保存校准', calibration_status_text(settings))
+
+    def test_custom_turn_and_strafe_bindings_survive_complete_roundtrip(self):
+        settings = Settings(left_key='Q', right_key='E', strafe_left_key='A', strafe_right_key='D',
+                            walk_toggle_key=']',
+                            calibration=CALIBRATION.copy(), movement_calibration=MOVEMENT_CALIBRATION.copy())
+        with temporary_workspace() as directory:
+            path = Path(directory) / 'config.json'
+            settings.save(path)
+            restored = Settings.load(path)
+        self.assertEqual(restored, settings)
+        self.assertIsNone(calibration_required_reason(restored))
+
 
 class ActiveUiGuardsTests(unittest.TestCase):
+    def test_incomplete_calibration_is_explained_without_arming(self):
+        for calibration in (None, CALIBRATION.copy()):
+            with self.subTest(calibration=calibration):
+                app = Application.__new__(Application)
+                app.settings = Settings(calibration=calibration)
+                app._apply_settings = Mock(return_value=app.settings)
+                app.state = 'paused'
+                app.map = SimpleNamespace(goal=Point(0, 30., 40.))
+                app.runtime, app.status_var, app.log, app.cancel_preview = Mock(), Mock(), Mock(), Mock()
+                app.start()
+                self.assertEqual(app.state, 'paused')
+                app.runtime.command.assert_not_called()
+                app.cancel_preview.assert_not_called()
+                reason = calibration_required_reason(app.settings)
+                app.status_var.set.assert_called_once_with(reason)
+                app.log.assert_called_once_with(reason)
+
+    def test_complete_calibration_allows_start(self):
+        app = Application.__new__(Application)
+        app.settings = Settings(left_key='Q', right_key='E', strafe_left_key='A', strafe_right_key='D',
+                                calibration=CALIBRATION.copy(), movement_calibration=MOVEMENT_CALIBRATION.copy())
+        app._apply_settings = Mock(return_value=app.settings)
+        app.state = 'paused'
+        app.map = SimpleNamespace(goal=Point(0, 30., 40.))
+        app.runtime, app.status_var, app.log, app.cancel_preview = Mock(), Mock(), Mock(), Mock()
+        app.candidates_var = Mock(get=Mock(return_value=False))
+        app.runtime.command.return_value = 7
+        app.runtime.control_epoch = 7
+        app.runtime.quit.is_set.return_value = False
+        app.closed = False
+        with patch('adrive.app.focus_game_window') as focus:
+            app.start()
+        focus.assert_called_once_with(app.settings.window_title)
+        self.assertEqual(app.state, 'armed')
+        self.assertEqual([c.args[0] for c in app.runtime.command.call_args_list], ['pause', 'arm'])
+        app.runtime.command.assert_called_with('arm', _expected_epoch=7, goal=app.map.goal, allow_candidates=False)
+        app.cancel_preview.assert_called_once_with()
+        app.log.assert_not_called()
+
+    def test_calibration_reset_and_results_refresh_completeness_label(self):
+        app = Application.__new__(Application)
+        app.closed, app.events = False, queue.Queue()
+        app.root, app.calibration_var = Mock(), Mock()
+        app.settings = Settings(calibration=CALIBRATION.copy(), movement_calibration=MOVEMENT_CALIBRATION.copy())
+        for event, expected in (({'kind': 'calibration_reset'}, 'none'),
+                                ({'kind': 'calibrated', 'calibration': CALIBRATION.copy()}, 'turn_only'),
+                                ({'kind': 'calibrated', 'calibration': CALIBRATION.copy(),
+                                  'movement_calibration': MOVEMENT_CALIBRATION.copy()}, 'complete')):
+            with self.subTest(expected=expected):
+                app.events.put(event)
+                app.poll()
+                self.assertEqual(calibration_state(app.settings), expected)
+                app.calibration_var.set.assert_called_with(calibration_status_text(app.settings))
+
     def test_pending_and_live_execution_cannot_be_relabelled_by_preview_edits(self):
         for state in ACTIVE_STATES:
             with self.subTest(state=state):
@@ -268,7 +365,7 @@ class PlannerControllerBoundaryTests(unittest.TestCase):
         bundle.asset_root = None  # Verify original source labels on the legacy backend.
         source = {e.id: e for e in bundle.edges}
         for a, b, candidates in ((3766, 3908, False), (1108, 512, True)):
-            planned = Planner(bundle).plan(bundle.nodes[a], bundle.nodes[b], allow_candidates=candidates)
+            planned = Planner(bundle)._plan_coarse(bundle.nodes[a], bundle.nodes[b], allow_candidates=candidates)
             Controller(Calibration(**CALIBRATION)).set_route(planned)
             self.assertLess(planned.points[0].distance(planned.start), 1e-6)
             self.assertLess(planned.points[-1].distance(planned.goal), 1e-6)

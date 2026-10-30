@@ -35,6 +35,15 @@ end
 local function boolean(value)
     return accessible(value) and type(value)=='boolean'
 end
+local function zoneToken()
+    local text=call(GetSubZoneText)
+    if not accessible(text) or type(text)~='string' or text=='' then text=call(GetRealZoneText) end
+    if not accessible(text) or type(text)~='string' or text=='' then return 0 end
+    -- UTF-8 byte hash, exact arithmetic below Lua's double integer limit.
+    local hash=5381
+    for i=1,#text do hash=(hash*33+text:byte(i))%4294967296 end
+    return hash
+end
 local function color(index,value)
     cells[index]:SetColorTexture(value[1]/255,value[2]/255,value[3]/255,1)
 end
@@ -53,7 +62,7 @@ local function layout()
     for i=1,16 do
         color(i,P.Markers[i])
         color(16+i,{(i-1)*17,(i-1)*17,(i-1)*17})
-        color(112+i,P.Markers[17-i])
+        color((P.ROWS-1)*P.COLS+i,P.Markers[17-i])
     end
     frame:Show()
 end
@@ -70,11 +79,18 @@ local function sample()
     local flags=0
     local uiMap=call(C_Map and C_Map.GetBestMapForUnit,'player')
     if not number(uiMap) or uiMap<0 then uiMap=0 end
-    local x,y,z,c=call(UnitPosition,'player')
-    if not (number(x) and number(y) and number(c)) then x,y,c=mapPosition(uiMap); z=nil end
-    if not number(z) or math.abs(z)>=134217727 then z=nil end
+    -- UnitPosition's third return is not a reliable altitude on Forever.
+    -- Send XY only; the desktop resolves ground height from collision data.
+    local x,y,_,c=call(UnitPosition,'player')
+    if not (number(x) and number(y) and number(c)) then x,y,c=mapPosition(uiMap) end
+    local indoors,falling=call(IsIndoors),call(IsFalling)
+    local environment=(boolean(indoors) and (indoors and 3 or 1) or 0)
+        +(boolean(falling) and (falling and 12 or 4) or 0)
     local facing=call(GetPlayerFacing)
-    local speed=call(GetUnitSpeed,'player')
+    local speed,groundSpeed=call(GetUnitSpeed,'player')
+    if not number(groundSpeed) or groundSpeed<=0 or groundSpeed>65535/256 then groundSpeed=nil end
+    local mounted=call(IsMounted)
+    if not boolean(mounted) then mounted=nil end
     local connected=call(UnitIsConnected,'player')
     local exists=call(UnitExists,'player')
     local combat=call(UnitAffectingCombat,'player')
@@ -106,8 +122,9 @@ local function sample()
     if yes(UnitInVehicle,'player') or yes(IsOnTransport) then flags=flags+F.TRANSPORT end
     seq=(seq+1)%4294967296
     local t={session=session,seq=seq,c=valid and math.floor(c) or 0,ui_map=math.floor(uiMap),
-        x=valid and x or 0,y=valid and y or 0,z=valid and z or nil,
-        facing=valid and facing or 0,speed=valid and speed or 0,flags=flags}
+        x=valid and x or 0,y=valid and y or 0,zone_token=zoneToken(),environment=environment,
+        facing=valid and facing or 0,speed=valid and speed or 0,flags=flags,
+        ground_speed=valid and groundSpeed or nil,mounted=mounted}
     local bytes=P.Encode(t)
     if not bytes then return end
     for index,byte in ipairs(bytes) do
@@ -116,8 +133,8 @@ local function sample()
         cells[hi]:SetColorTexture(high/255,high/255,high/255,1)
         cells[hi+1]:SetColorTexture(low/255,low/255,low/255,1)
     end
-    -- Clear padding when a v2 height sample changes back to a v1 fallback.
-    for index=33+#bytes*2,112 do cells[index]:SetColorTexture(0,0,0,1) end
+    -- Clear any unused payload cells.
+    for index=33+#bytes*2,(P.ROWS-1)*P.COLS do cells[index]:SetColorTexture(0,0,0,1) end
     AD.last=t
     AD.statusKnown=statusKnown
 end
@@ -134,6 +151,9 @@ end
 frame:RegisterEvent('ADDON_LOADED')
 frame:RegisterEvent('PLAYER_ENTERING_WORLD')
 frame:RegisterEvent('PLAYER_LEAVING_WORLD')
+frame:RegisterEvent('ZONE_CHANGED')
+frame:RegisterEvent('ZONE_CHANGED_INDOORS')
+frame:RegisterEvent('ZONE_CHANGED_NEW_AREA')
 frame:SetScript('OnEvent',function(_,event,name)
     if event=='ADDON_LOADED' and name==addonName then initialize()
     elseif event=='PLAYER_ENTERING_WORLD' then loading=false
@@ -157,7 +177,7 @@ SlashCmdList.AUTONOMOUSDRIVINGTELEMETRY=function(text)
     elseif command=='hide' then frame:Hide()
     else
         print('AutonomousDriving: /adgps pos 8 8 | cell 8 | reset | show | hide')
-        print('AD v2（含高度，兼容 v1）；仅输出遥测。船只和电梯检测取决于客户端公开 API，不保证完整。')
+        print('AD：仅输出水平位置；地面高度由桌面客户端推定。船只和电梯检测不保证完整。')
         if AD.last then print('session='..AD.last.session..' seq='..AD.last.seq..' flags='..AD.last.flags) end
         print('必要状态 API 可用='..tostring(AD.statusKnown))
     end

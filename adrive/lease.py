@@ -80,6 +80,10 @@ class LeaseClient:
     Call poll frequently, and renew only while the game observation is safe.
     Stop/close revoke locally before attempting a best-effort stop packet.
     """
+    protocol_version = 3
+    response_size = RESPONSE.size
+    decode_status = staticmethod(decode_status)
+
     def __init__(self, host='192.168.11.7', port=8888):
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
@@ -123,8 +127,8 @@ class LeaseClient:
     def _packet(self, op, *, lease=0, hold=0, keys=(), modifier=0, epoch=None):
         token = secrets.randbits(32)
         if op == QUERY:
-            return REQUEST.pack(b'ADRV', 3, QUERY, 0, 0, 0, token, 0, 0, 0, 0, 0, b'\0' * 6, 0)
-        return REQUEST.pack(b'ADRV', 3, op, lease, hold, 0, token, self._boot,
+            return REQUEST.pack(b'ADRV', self.protocol_version, QUERY, 0, 0, 0, token, 0, 0, 0, 0, 0, b'\0' * 6, 0)
+        return REQUEST.pack(b'ADRV', self.protocol_version, op, lease, hold, 0, token, self._boot,
                             self._epoch if epoch is None else epoch, self._session,
                             self.seq, modifier, bytes(keys).ljust(6, b'\0'), 0)
 
@@ -136,7 +140,7 @@ class LeaseClient:
                 raise PicoError('Pico 状态报文未完整发送')
         except OSError as exc:
             raise PicoError(f'Pico 状态发送失败：{exc}') from exc
-        fields = REQUEST.unpack(packet)
+        fields = REQUEST.unpack_from(packet)
         token, op, seq = fields[6], fields[2], fields[10]
         self._pending[token] = (op, seq, now)
         # Bounded bookkeeping; expired/foreign responses cannot revive control.
@@ -247,14 +251,14 @@ class LeaseClient:
                 break
             except OSError as exc:
                 self._fail(f'Pico 状态接收失败：{exc}', now)
-            if len(data) != RESPONSE.size or data[:4] != b'ADRS':
+            if len(data) != self.response_size or data[:4] != b'ADRS':
                 continue
             token = struct.unpack_from('<I', data, 8)[0]
             request = self._pending.pop(token, None)
             if request is None:
                 continue
             try:
-                status = decode_status(data, now)
+                status = self.decode_status(data, now)
             except PicoError as exc:
                 self._fail(str(exc), now)
             self._consume(status, request, now)
@@ -264,8 +268,8 @@ class LeaseClient:
                     self.supported = False
                     if self.state == 'diagnosing':
                         self.state = 'idle'
-                        raise PicoError('未收到 ADR v3 回应；设备可能使用旧固件或网络不可达')
-                    self._fail('Pico 未回应连续控制协议；请刷入支持 ADR v3 的固件并检查网络', now)
+                        raise PicoError(f'未收到 ADR v{self.protocol_version} 回应；设备可能使用旧固件或网络不可达')
+                    self._fail(f'Pico 未回应连续控制协议；请刷入支持 ADR v{self.protocol_version} 的固件并检查网络', now)
                 self._fail('Pico 连续控制会话开启超时', now)
             if now - self.last_sent_at >= .08:
                 packet = self._open_packet if self.state == 'opening' and self.status is None else None

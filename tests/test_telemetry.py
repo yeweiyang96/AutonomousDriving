@@ -19,10 +19,21 @@ def sample(**changes):
 class BinaryProtocolTests(unittest.TestCase):
     def test_golden_packet_and_endianness(self):
         # Also recorded in docs/telemetry-protocol.md for Lua verification.
-        expected = bytes.fromhex("4144010078563412feffffff010083050000d8b2ffffe4620100004000070100066c")
-        self.assertEqual(34, FRAME_BYTES)
+        expected = bytes.fromhex("4144040078563412feffffff010083050000d8b2ffffe462010000400007010000000000000000000000b692")
+        self.assertEqual(44, FRAME_BYTES)
         self.assertEqual(expected, encode_frame(sample()))
         self.assertEqual(sample(captured_at=12), decode_frame(expected, 12))
+
+    def test_v3_remains_observable_with_unknown_speed_capability(self):
+        old=sample(protocol_version=3)
+        self.assertEqual(old,decode_image(render_frame(old),0))
+        self.assertIsNone(decode_frame(encode_frame(old)).ground_speed)
+
+    def test_realtime_speed_can_decrease_and_zero_is_not_missing(self):
+        for speed in (14,7,3.25,0):
+            t=sample(speed=speed,ground_speed=14,mounted=True)
+            decoded=decode_frame(encode_frame(t),0)
+            self.assertEqual((decoded.speed,decoded.ground_speed,decoded.mounted),(speed,14,True))
 
     def test_signed_coordinates_precision_facing_wrap_and_flags(self):
         for x in (-17000.123, -0.03125, 0.03125, 17000.987):

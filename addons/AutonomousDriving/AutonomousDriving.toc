@@ -2,7 +2,7 @@
 ## Title: AutonomousDriving Telemetry
 ## Notes: Forever ground-navigation pixel telemetry. No input automation runs in the addon.
 ## Author: AutonomousDriving contributors
-## Version: 0.2.0
+## Version: 0.4.0
 ## SavedVariables: AutonomousDrivingDB
 
 Protocol.lua

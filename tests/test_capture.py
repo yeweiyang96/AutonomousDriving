@@ -49,10 +49,10 @@ class CaptureTests(unittest.TestCase):
         self.assertTrue(capture.foreground())
         second = capture.poll()
         self.assertEqual(first.seq, second.seq)  # FreshnessTracker rejects duplicates.
-        self.assertEqual((128, 88, 256, 152), backend.grabs[-1])
+        self.assertEqual((128, 88, 256, 160), backend.grabs[-1])
         backend.origin = (-1000, 30)  # Monitor left of the primary screen.
         self.assertEqual(first.point, capture.poll().point)
-        self.assertEqual((-992, 38, -864, 102), backend.grabs[-1])
+        self.assertEqual((-992, 38, -864, 110), backend.grabs[-1])
 
     def test_does_not_bind_browser_or_ambiguous_game_title(self):
         backend = FakeBackend()

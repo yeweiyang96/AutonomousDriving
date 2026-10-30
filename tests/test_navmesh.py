@@ -9,6 +9,7 @@ import struct
 import subprocess
 import threading
 import unittest
+from unittest.mock import patch
 
 from adrive.models import Flags, Point, PlanningError, Telemetry, Route, Segment
 from adrive.controller import Calibration
@@ -21,7 +22,11 @@ from tests.test_addon_lua import AddonHarness, LuaRuntime
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = ROOT / 'runtime/navmesh-build/Release/navmesh_fixture.exe'
-DLL = ROOT / 'data/navigation/adrive_navmesh.dll'
+MANIFEST = ROOT / 'data/navigation/manifest.json'
+# Test the same explicitly published ABI as production, rather than a stale
+# build copied beside the manifest before bounded search was introduced.
+DLL = (MANIFEST.parent / json.loads(MANIFEST.read_text(encoding='utf-8'))['library']['path']
+       if MANIFEST.exists() else MANIFEST.parent / 'adrive_navmesh.dll')
 
 
 def entry(path, root, **metadata):
@@ -32,6 +37,12 @@ def entry(path, root, **metadata):
 
 @unittest.skipUnless(FIXTURE.exists() and DLL.exists(), '需要先运行 tools/build_navmesh.ps1 编译真实 Detour 测试工具')
 class NativeNavigationTests(unittest.TestCase):
+    def setUp(self):
+        # Fixture queries must never replace a real user's last-plan evidence.
+        writer = patch.object(NavMeshPack, '_save_route_diagnostics')
+        writer.start()
+        self.addCleanup(writer.stop)
+
     @classmethod
     def setUpClass(cls):
         root = ROOT / 'runtime/navmesh-fixtures'
@@ -53,6 +64,26 @@ class NativeNavigationTests(unittest.TestCase):
         with self.assertRaises(PlanningError) as raised:
             self.pack.plan(Point(0, 5, 5), Point(0, 25, 25, 0))
         self.assertEqual(raised.exception.code, 'navmesh_height')
+
+    def test_capture_height_inference_preserves_position_time_and_ambiguity(self):
+        from adrive.height import TerrainHeightResolver
+        resolver = TerrainHeightResolver(None, pack_loader=lambda _: self.pack)
+        self.addCleanup(resolver.close)
+        for raw in (None,):
+            sample = Telemetry(1, 2, 0, 1429, 25, 25, 0, 0, Flags.VALID, 12, raw)
+            resolved = resolver.resolve(sample)
+            self.assertEqual((resolved.x, resolved.y, resolved.captured_at, resolved.seq), (25, 25, 12, 2))
+            self.assertEqual((resolved.z, resolved.height_source), (0, 'navmesh'))
+            duplicate = resolver.resolve(replace(sample, captured_at=12.05))
+            self.assertEqual(duplicate, resolved)
+            # A new observation after a discontinuous move must resolve floors
+            # independently; reusing seq=2 would intentionally reuse its result.
+            ambiguous = resolver.resolve(replace(sample, seq=3, captured_at=12.1, x=5, y=5))
+            self.assertIsNone(ambiguous.z)
+            self.assertEqual(ambiguous.height_source, 'ambiguous')
+        for raw in (0, 87.5):
+            with self.assertRaises(ValueError):
+                resolver.resolve(replace(sample, z=raw))
 
     def test_same_xy_on_other_floor_is_not_arrived_or_a_straight_jump(self):
         with self.assertRaises(PlanningError) as raised:
@@ -111,23 +142,18 @@ class NativeNavigationTests(unittest.TestCase):
 
 
 class HeightProtocolTests(unittest.TestCase):
-    def test_v2_roundtrip_pixel_panel_and_crc(self):
+    def test_altitude_is_not_part_of_the_current_protocol(self):
         for z in (-340.123, 0, 950.99):
             t = Telemetry(8, 16, 0, 1415, -9458, 50, .4, 7, Flags.VALID, 12, z)
-            data = encode_frame(t)
-            self.assertEqual((38,2), (len(data),data[2]))
-            decoded = decode_frame(data,12)
-            self.assertLessEqual(abs(decoded.z-z),1/32)
-            self.assertEqual(decoded,decode_image(render_frame(t),12))
-            damaged=bytearray(data);damaged[-3]^=1
-            with self.assertRaises(ValueError):decode_frame(bytes(damaged))
+            with self.assertRaises(ValueError):
+                encode_frame(t)
 
     @unittest.skipIf(LuaRuntime is None, '需要 Lupa 执行生产 Lua 代码')
     def test_actual_lua_height_and_unknown_height_clear_old_pixels(self):
         addon=AddonHarness()
         addon.state.z=123.4375
         addon.tick()
-        self.assertEqual(addon.telemetry().z,123.4375)
+        self.assertIsNone(addon.telemetry().z)
         self.assertEqual(addon.telemetry(),decode_image(addon.image(),addon.state.clock))
         addon.state.position_available=False
         addon.tick()
@@ -157,6 +183,11 @@ class HeightControllerTests(unittest.TestCase):
 
 @unittest.skipUnless((ROOT/'data/navigation/manifest.json').exists(),'需要当前客户端生成的精细导航包')
 class InstalledNavigationTests(unittest.TestCase):
+    def setUp(self):
+        writer = patch.object(NavMeshPack, '_save_route_diagnostics')
+        writer.start()
+        self.addCleanup(writer.stop)
+
     @classmethod
     def setUpClass(cls):
         cls.bundle=DataBundle.load(ROOT/'data')

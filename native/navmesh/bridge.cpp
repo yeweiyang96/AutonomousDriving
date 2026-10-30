@@ -6,6 +6,7 @@
 #include "DetourAlloc.h"
 #include "DetourCommon.h"
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <cstring>
@@ -210,3 +211,6 @@ API int ad_path(void* handle,const float* start,const float* goal,int budget,Can
 #include "surface_diagnostics_v2.inc"
 
 #include "path_search_bounds_v3.inc"
+
+#include "road_corridor_v1.inc"
+#include "motion_v1.inc"

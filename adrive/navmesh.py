@@ -45,6 +45,13 @@ NATIVE_BUDGET_REASONS = {
     7: 'surface_height_capacity',
 }
 
+# Road preference must not make a nearby destination require a large loop.
+# These thresholds trigger a comparison; only a complete native walking path
+# can replace the guided route, and it must save at least 20 percent.
+ROAD_GUIDE_DETOUR_RATIO = 2.5
+ROAD_GUIDE_EXCESS_YARDS = 500.0
+ROAD_DIRECT_LENGTH_RATIO = 0.8
+
 
 def _budget_error(source, **details):
     """Add observable context while preserving the existing budget error code."""
@@ -86,6 +93,23 @@ class Native:
             self.bounded_path.argtypes = [ptr, floats, floats, C.c_int, C.c_float,
                                            CALLBACK, floats, refs, C.c_int, ints, ints]
             self.bounded_path.restype = C.c_int
+        self.corridor_path = getattr(self.dll, 'ad_path_corridor_v1', None)
+        if self.corridor_path is not None:
+            self.corridor_path.argtypes = [ptr, floats, floats, C.c_int, floats, C.c_int,
+                                          C.c_float, CALLBACK, floats, refs, C.c_int, ints, ints]
+            self.corridor_path.restype = C.c_int
+        self.road_project = getattr(self.dll, 'ad_road_project_v1', None)
+        if self.road_project is not None:
+            self.road_project.argtypes = [ptr, floats, C.c_float, floats, C.c_int, ints]
+            self.road_project.restype = C.c_int
+        self.motion_corridor = getattr(self.dll, 'ad_motion_corridor_v1', None)
+        self.motion_validate = getattr(self.dll, 'ad_motion_validate_v1', None)
+        if self.motion_corridor is not None:
+            self.motion_corridor.argtypes = [ptr, floats, C.c_int, C.c_float, refs, C.c_int, ints]
+            self.motion_corridor.restype = C.c_int
+        if self.motion_validate is not None:
+            self.motion_validate.argtypes = [ptr, floats, C.c_int, C.c_float, refs, C.c_int, ints, floats]
+            self.motion_validate.restype = C.c_int
 
 
 def vector(point):
@@ -166,6 +190,38 @@ class Mesh:
             self.keys[ref] = ','.join(map(str, key))
         return self.keys[ref]
 
+    def project_road(self, point, radius=9.):
+        if self.pack.native.road_project is None:
+            raise PlanningError('navmesh_capability', '导航库缺少道路验证接口')
+        values, count = (C.c_float * 96)(), C.c_int()
+        checked(self.pack.native.road_project(self.handle, vector(point), radius, values, 32,
+                                             C.byref(count)), source='native.ad_road_project_v1')
+        return [Point(self.c, *values[i*3:i*3+3]) for i in range(count.value)]
+
+    def motion_corridor(self, points, width=4.):
+        if self.pack.native.motion_corridor is None:
+            raise PlanningError('navmesh_capability', '导航库缺少连续运动走廊接口')
+        points=tuple(points)
+        if not points or len(points)>8192 or any(p.z is None for p in points):
+            raise PlanningError('motion_geometry', '运动走廊缺少有效地面')
+        values=(C.c_float*(len(points)*3))(*(v for p in points for v in (p.x,p.y,p.z)))
+        refs=(C.c_uint64*65535)(); count=C.c_int()
+        checked(self.pack.native.motion_corridor(self.handle,values,len(points),width,refs,len(refs),C.byref(count)),source='motion.corridor')
+        return tuple(refs[:count.value])
+
+    def motion_validate(self, points, margin=.10, corridor=()):
+        if self.pack.native.motion_validate is None:
+            raise PlanningError('navmesh_capability', '导航库缺少连续运动碰撞接口')
+        points=tuple(points)
+        if not points or len(points)>8192 or any(p.z is None for p in points):
+            return False
+        values=(C.c_float*(len(points)*3))(*(v for p in points for v in (p.x,p.y,p.z)))
+        refs=(C.c_uint64*len(corridor))(*corridor); failed=C.c_int(); clearance=C.c_float()
+        rc=self.pack.native.motion_validate(self.handle,values,len(points),margin,refs,len(refs),C.byref(failed),C.byref(clearance))
+        if rc in (3,4,5,8): return False
+        checked(rc,source='motion.validate',failed_segment=failed.value)
+        return True
+
     def block(self, edges):
         prefix = f'nav:{self.pack.identity}:{self.c}:'
         for edge in edges:
@@ -180,7 +236,7 @@ class Mesh:
                 continue
             checked(self.pack.native.dll.ad_block(self.handle, (C.c_int * 3)(*ka), (C.c_int * 3)(*kb)), source='native.ad_block', **self.debug_context)
 
-    def path(self, start, goal, budget, *, max_length_xy=None):
+    def path(self, start, goal, budget, *, max_length_xy=None, road_reference=None, corridor_width=24.):
         if self.cancelled():
             raise PlanningError(*ERRORS[7])
         if max_length_xy is not None:
@@ -192,7 +248,16 @@ class Mesh:
         cap = 65535
         values, refs, count, expanded = (C.c_float * (cap * 3))(), (C.c_uint64 * cap)(), C.c_int(), C.c_int()
         callback = CALLBACK(lambda: int(self.cancelled()))
-        if max_length_xy is None:
+        if road_reference is not None:
+            if self.pack.native.corridor_path is None:
+                raise PlanningError('navmesh_capability', '导航库缺少道路走廊接口')
+            reference = list(road_reference)
+            values_line = (C.c_float * (len(reference)*3))(*(v for p in reference for v in (p.x,p.y,p.z if p.z is not None else math.nan)))
+            source = 'native.ad_path_corridor_v1'
+            rc = self.pack.native.corridor_path(self.handle, vector(start), vector(goal), budget,
+                    values_line, len(reference), corridor_width, callback, values, refs, cap,
+                    C.byref(count), C.byref(expanded))
+        elif max_length_xy is None:
             source = 'native.ad_path'
             rc = self.pack.native.dll.ad_path(self.handle, vector(start), vector(goal), budget, callback,
                                               values, refs, cap, C.byref(count), C.byref(expanded))
@@ -206,15 +271,19 @@ class Mesh:
                            'search_scope': 'loaded_walk_graph_with_conservative_length_domain',
                            'global_unreachable_proven': False}
                           if max_length_xy is not None else {})
+        if road_reference is not None:
+            search_details.update(search_scope='road_corridor_polygon_set',corridor_width=corridor_width,
+                                  reference_points=len(reference),global_unreachable_proven=False)
         try:
-            if rc == 10 and max_length_xy is not None:
+            if rc == 10 and (max_length_xy is not None or road_reference is not None):
                 payload = {'source': source, 'rc': rc, **self.debug_context, **search_details,
                            'passed_budget': budget, 'call_expanded': expanded.value,
                            'continent': self.c, 'loaded_tiles': len(self.loaded),
                            'loaded_bytes': self.bytes, 'max_bytes': self.pack.max_bytes,
                            'start': [start.x, start.y, start.z], 'goal': [goal.x, goal.y, goal.z]}
                 error = PlanningError('road_scope_unconnected',
-                    '当前已加载网格内，道路长度约束限定的搜索范围没有完整步行连接' +
+                    ('当前已加载网格内，道路走廊没有完整步行连接' if road_reference is not None else
+                     '当前已加载网格内，道路长度约束限定的搜索范围没有完整步行连接') +
                     ' | NAV_DEBUG ' + json.dumps(payload, ensure_ascii=False, separators=(',', ':')))
                 error.search_scope = payload
                 raise error
@@ -313,7 +382,7 @@ class NavMeshPack:
                      'reliability': s.reliability, 'edge_id': s.edge_id}
                     for s in items[:limit]]
 
-        diagnostic = {'schema': 1, 'planner_version': 'road-corridor-v3-bounded',
+        diagnostic = {'schema': 1, 'planner_version': 'road-corridor-v4-quality',
                       'started_at_utc': datetime.now(timezone.utc).isoformat(),
                       'navigation_identity': self.identity,
                       'native_library_sha256': self.raw['library']['sha256'],
@@ -328,6 +397,8 @@ class NavMeshPack:
         try:
             route = self._plan_geometry(start, goal, guide, blocked_edges, cancel,
                                         max_expansions, diagnostic)
+            route = self._select_road_route(route, guide, blocked_edges, cancel,
+                                            max_expansions, diagnostic)
             if cancel and cancel.is_set():
                 raise PlanningError('cancelled', '规划已取消')
             diagnostic['result'] = {'status': 'success', 'start': point(route.start),
@@ -351,6 +422,83 @@ class NavMeshPack:
                 diagnostic['complete'] = False
             if getattr(self, 'record_diagnostics', False):
                 self._save_route_diagnostics(diagnostic)
+
+    def _select_road_route(self, route, guide, blocked_edges, cancel,
+                           max_expansions, diagnostic):
+        straight = route.start.distance(route.goal)
+        guided_length = route.distance
+        guide_length = guide.distance if guide is not None else None
+        has_roads = guide is not None and any(
+            s.reliability in ('reviewed', 'candidate') for s in guide.segments)
+        triggered = bool(has_roads and all(
+            length > straight * ROAD_GUIDE_DETOUR_RATIO
+            and length - straight > ROAD_GUIDE_EXCESS_YARDS
+            for length in (guide_length, guided_length)))
+        selection = {'triggered': triggered, 'selected': 'guided' if has_roads else 'direct',
+                     'reason': ('road_detour_comparison' if triggered else
+                                'within_road_preference' if has_roads else 'no_road_guide'),
+                     'straight_xy': straight, 'guide_length_xy': guide_length,
+                     'guided_length_xy': guided_length, 'direct_length_xy': None,
+                     'guided_expanded': route.expanded, 'direct_expanded': 0,
+                     'expanded_total': route.expanded,
+                     'detour_ratio_trigger': ROAD_GUIDE_DETOUR_RATIO,
+                     'detour_excess_yards': ROAD_GUIDE_EXCESS_YARDS,
+                     'replacement_length_ratio': ROAD_DIRECT_LENGTH_RATIO,
+                     'global_unreachable_proven': False}
+        diagnostic['route_selection'] = selection
+        if not triggered:
+            return route
+        if cancel and cancel.is_set():
+            raise PlanningError('cancelled', '规划已取消')
+        remaining = max_expansions - route.expanded
+        if remaining <= 0:
+            selection.update(reason='comparison_budget_unavailable', direct_status='not_attempted')
+            return route
+
+        # Reuse the resolved XY and floors, never the 2-D guide's guessed layer.
+        # _plan_geometry owns/closes its mesh and keeps all existing walk filters,
+        # blocked connections and the 384 MiB tile limit. Do not call plan() here:
+        # that would reset accounting and overwrite the parent diagnostic.
+        limit = guided_length * ROAD_DIRECT_LENGTH_RATIO
+        probe = {'road_trace': []}
+        selection.update(search_length_limit_xy=limit, passed_budget=remaining,
+                         search_scope='loaded_walk_graph_with_conservative_length_domain')
+        diagnostic['direct_comparison'] = probe
+        try:
+            direct = self._plan_geometry(route.start, route.goal, None, blocked_edges,
+                                         cancel, remaining, probe, direct_limit=limit)
+        except PlanningError as exc:
+            spent = getattr(exc, 'expanded', 0)
+            selection.update(direct_expanded=spent, expanded_total=route.expanded + spent,
+                             direct_status=exc.code, direct_error=str(exc),
+                             native_debug=getattr(exc, 'native_debug', None))
+            if exc.code not in ('no_route', 'blocked_navmesh', 'road_scope_unconnected',
+                                'road_connection_unverified', 'budget'):
+                exc.expanded = route.expanded + spent
+                raise
+            if cancel and cancel.is_set():
+                error = PlanningError('cancelled', '规划已取消')
+                error.expanded = route.expanded + spent
+                raise error from exc
+            selection['reason'] = 'shorter_connection_unverified'
+            return Route(route.start, route.goal, route.segments, route.expanded + spent)
+
+        total = route.expanded + direct.expanded
+        selection.update(direct_length_xy=direct.distance, direct_expanded=direct.expanded,
+                         expanded_total=total, direct_status='complete')
+        if cancel and cancel.is_set():
+            error = PlanningError('cancelled', '规划已取消')
+            error.expanded = total
+            raise error
+        # The native length domain is conservative: a successful result can
+        # still exceed the requested length. Measure the actual returned path.
+        if direct.start != route.start or direct.goal != route.goal:
+            raise PlanningError('navmesh_endpoint', '候选路线改变了起终点或所在楼层')
+        if direct.distance <= limit:
+            selection.update(selected='direct', reason='complete_shorter_walk')
+            return Route(direct.start, direct.goal, direct.segments, total)
+        selection['reason'] = 'road_preference_retained'
+        return Route(route.start, route.goal, route.segments, total)
 
     def _save_route_diagnostics(self, diagnostic):
         # Diagnostics never change route success or trigger device activity.
@@ -388,7 +536,8 @@ class NavMeshPack:
                 except OSError:
                     pass
 
-    def _plan_geometry(self, start, goal, guide, blocked_edges, cancel, max_expansions, diagnostic):
+    def _plan_geometry(self, start, goal, guide, blocked_edges, cancel, max_expansions, diagnostic,
+                       *, direct_limit=None):
         validate_point(start)
         validate_point(goal)
         if start.c != goal.c:
@@ -429,6 +578,37 @@ class NavMeshPack:
                         raise PlanningError('navmesh_height_mismatch', f'{label}高度与可步行地面不符，请确认角色高度或所选楼层')
                     raise PlanningError(ERRORS[3][0], label + '不在可步行表面内；未将坐标移动到别处')
                 if p.z is None and len(hs)>1:
+                    if label == '终点':
+                        # Destination intent defaults to the shortest verified
+                        # reachable surface, never changes the observed start floor.
+                        candidates, spent, trials = [], 0, []
+                        origin = resolved[0]
+                        limit = max(origin.distance(p)*3, origin.distance(p)+50,
+                                    guide.distance*1.5 if guide else 0)
+                        for h in hs[:8]:
+                            target = Point(p.c, p.x, p.y, h)
+                            try:
+                                parts, count = mesh.path(origin, target, min(8192, max_expansions-spent),
+                                                         max_length_xy=limit)
+                                spent += count
+                                length = sum(s.distance for s in parts)
+                                trials.append({'z':h, 'status':'complete', 'length':length})
+                                if length <= limit:
+                                    candidates.append((length, h, parts, target))
+                            except PlanningError as exc:
+                                spent += getattr(exc, 'expanded', 0)
+                                trials.append({'z':h, 'status':exc.code})
+                                if exc.code in ('cancelled', 'navmesh_integrity', 'navmesh_capability'):
+                                    raise
+                            if spent >= max_expansions:
+                                break
+                        diagnostic['goal_surface_selection'] = {'policy':'shortest_verified_walk', 'trials':trials,
+                                                                'expanded':spent, 'all_surfaces_tested':len(trials)==len(hs)}
+                        if candidates:
+                            _, _, parts, target = min(candidates, key=lambda item:(item[0],item[1]))
+                            diagnostic['goal_surface_selection']['selected_z'] = target.z
+                            return Route(origin, target, tuple(parts), spent)
+                        raise PlanningError('goal_floor_unverified', '终点有多层地面，限定范围内尚未找到完整步行连接；请在入口附近选点')
                     raise PlanningError(ERRORS[4][0], label + '有多层地面，请确认角色高度或选择对应楼层')
                 if p.z is not None:
                     hs.sort(key=lambda h:abs(h-p.z))
@@ -462,7 +642,7 @@ class NavMeshPack:
             # The native domain is a necessary geometric superset, not a new
             # permission to cross water or a proof about unloaded tiles.
             fallback_limit = (detour_metrics(fallback_reference, fallback_reference)['length_limit_xy']
-                              if fallback_reference is not None else None)
+                              if fallback_reference is not None else direct_limit)
             for radius in (1, 2, 4):
                 if mesh.cancelled():
                     error = PlanningError('cancelled', '规划已取消')
@@ -478,7 +658,11 @@ class NavMeshPack:
                 if radius > 1:
                     extra = {(r+dr,c+dc) for r,c in keys for dr in range(-radius,radius+1)
                              for dc in range(-radius,radius+1) if 0<=r+dr<64 and 0<=c+dc<64}
-                    mesh.load(extra)
+                    try:
+                        mesh.load(extra)
+                    except PlanningError as exc:
+                        exc.expanded = expanded
+                        raise
                     mesh.block(blocked_edges)
                 mesh.debug_context['stage'] = 'fallback_path'
                 try:

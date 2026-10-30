@@ -53,5 +53,22 @@ int main(int argc,char** argv) {
         std::ofstream tile(dir/(c==0?"0000_31_31.mmtile":"0001_31_31.mmtile"),std::ios::binary);
         tile.write((char*)&th,sizeof th);tile.write((char*)data,size);
     }
-    dtFree(data);return 0;
+    dtFree(data);
+    // Continent 1 additionally has a real external tile portal at west=30.
+    // Keep continent 0's original hole/water/stacked-floor fixture unchanged.
+    for(int i=0;i<count;++i) for(int a=0;a<4;++a) {
+        int va=polys[i*12+a],vb=polys[i*12+(a+1)%4];
+        if(polys[i*12+6+a]!=0xffff)continue;
+        if(vertices[va*3]==0 && vertices[vb*3]==0)polys[i*12+6+a]=0x8000;
+        if(vertices[va*3]==30 && vertices[vb*3]==30)polys[i*12+6+a]=0x8002;
+    }
+    p.offMeshConCount=0;
+    for(int tileIndex=0;tileIndex<2;++tileIndex) {
+        p.tileX=tileIndex;p.bmin[0]=float(tileIndex*30);p.bmax[0]=float((tileIndex+1)*30);
+        if(!dtCreateNavMeshData(&p,&data,&size))return 3;
+        th.size=uint32_t(size);
+        std::ofstream tile(dir/(tileIndex==0?"0001_31_31.mmtile":"0001_31_30.mmtile"),std::ios::binary);
+        tile.write((char*)&th,sizeof th);tile.write((char*)data,size);dtFree(data);
+    }
+    return 0;
 }

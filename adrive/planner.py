@@ -1,8 +1,8 @@
-"""Ground-only, lazy mixed road/terrain A* with lexicographic route costs.
+"""Production road-only planning and the retained legacy diagnostic planner.
 
-Cost is (unreviewed yards, total yards), not an invented enemy-risk score.
-Road geometry remains intact; only terrain runs may be simplified, and every
-replacement line is checked against directed dry-grid connectivity again.
+The public entrypoint requires a collision-bound unified road pack. The private
+_plan_coarse function remains only for historical source/geometry diagnostics;
+its road/grid costs and labels never authorize production movement.
 """
 from __future__ import annotations
 
@@ -43,22 +43,22 @@ class Planner:
              blocked_edges: frozenset[str] = frozenset(), cancel: threading.Event | None = None,
              max_expansions: int = 500000) -> Route:
         from .navmesh import load_pack
-        pack = load_pack(self.bundle.asset_root)
-        if pack is not None:
-            if start.c != goal.c or start.c not in (0, 1):
-                raise PlanningError('different_continent', '精细导航仅支持同一大陆的地面路线')
-            if not all(math.isfinite(v) for p in (start, goal) for v in (p.x, p.y) + (() if p.z is None else (p.z,))):
-                raise PlanningError('invalid_point', '坐标必须为有限数值')
-            if cancel and cancel.is_set():
-                raise PlanningError('cancelled', '规划已取消')
-            guide = None
-            try:
-                guide = self._plan_coarse(start, goal, allow_candidates, blocked_edges, cancel, max_expansions)
-            except PlanningError as exc:
-                if exc.code == 'cancelled':
-                    raise
-            return pack.plan(start, goal, guide, blocked_edges, cancel, max_expansions)
-        return self._plan_coarse(start, goal, allow_candidates, blocked_edges, cancel, max_expansions)
+        from .roads import load_network, RoadPlanner
+        if cancel and cancel.is_set():
+            raise PlanningError('cancelled','规划已取消')
+        if start.c != goal.c:
+            raise PlanningError('different_continent','道路导航不能跨大陆')
+        # Arrival with no movement creates no walking segment and needs no
+        # fallback geometry. Retain this old controller/worker contract.
+        if start == goal:
+            return Route(start,goal,(),0)
+        pack=load_pack(self.bundle.asset_root)
+        if pack is None:
+            raise PlanningError('navmesh_missing','正式道路导航需要有效碰撞包；未回退到地形估算')
+        # allow_candidates is accepted only for old callers/configuration. All
+        # published roads have one class; provenance never changes path cost.
+        network=load_network(self.bundle.asset_root,pack)
+        return RoadPlanner(pack,network).plan(start,goal,blocked_edges,cancel,max_expansions)
 
     def _plan_coarse(self, start: Point, goal: Point, allow_candidates: bool = False,
                      blocked_edges: frozenset[str] = frozenset(), cancel: threading.Event | None = None,

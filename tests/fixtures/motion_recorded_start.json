@@ -1,0 +1,377 @@
+{
+  "schema": 1,
+  "provenance": {
+    "source_log": "20261030-113853-682916.jsonl",
+    "source_log_started_local": "2026-10-30T11:38:53.682916+09:00",
+    "route_event_s": 45.76761080000142,
+    "telemetry_event_s": 47.725201900000684,
+    "calibration_event_s": 27.147704399998474,
+    "original_goal": {
+      "c": 0,
+      "x": -6195.166888431835,
+      "y": 397.45513391694993,
+      "z": 391.5687255859375
+    },
+    "retained_source_segments": 15,
+    "retained_xy_yards": 62.421424932857775,
+    "selection": "Complete original route segments through the first vertex at or beyond 60 yards; goal is truncated for this local regression.",
+    "recorded_native_dll_sha256": null,
+    "recorded_native_dll_note": "The source log did not record a DLL hash. The explicit replay baseline below was verified from the production manifest and file."
+  },
+  "navigation_replay_baseline": {
+    "identity": "7a4606dd9c967264",
+    "native_library_sha256": "fab4b0128ab823959d756633de719f0580c0d6b04bd2398ae3d12bae053af9da",
+    "manifest_sha256": "09103d6543e4d3f68c30bd2c8c9bb9f68bf55a16f39c9ac808982445bcdb6449",
+    "captured_utc": "2026-10-30T03:26:43.914627+00:00"
+  },
+  "bindings": {
+    "forward": 26,
+    "turn_left": 20,
+    "turn_right": 8,
+    "strafe_left": 4,
+    "strafe_right": 7,
+    "walk_toggle": 84
+  },
+  "route": {
+    "start": {
+      "c": 0,
+      "x": -4895.625,
+      "y": -1115.125,
+      "z": 502.0308532714844
+    },
+    "goal": {
+      "c": 0,
+      "x": -4872,
+      "y": -1074,
+      "z": 502.2518310546875
+    },
+    "segments": [
+      {
+        "points": [
+          {
+            "c": 0,
+            "x": -4895.625,
+            "y": -1115.125,
+            "z": 502.0308532714844
+          },
+          {
+            "c": 0,
+            "x": -4895.524514758771,
+            "y": -1115.6609260251928,
+            "z": 502.0367126464844
+          }
+        ],
+        "source": "navmesh: static terrain + WMO/M2 collision",
+        "reliability": "navmesh",
+        "edge_id": "nav:7a4606dd9c967264:0:11,20,5954:11,20,5954"
+      },
+      {
+        "points": [
+          {
+            "c": 0,
+            "x": -4895.524514758771,
+            "y": -1115.6609260251928,
+            "z": 502.0367126464844
+          },
+          {
+            "c": 0,
+            "x": -4888.25927734375,
+            "y": -1114.2987060546875,
+            "z": 502.3995056152344
+          }
+        ],
+        "source": "navmesh: static terrain + WMO/M2 collision",
+        "reliability": "navmesh",
+        "edge_id": "nav:7a4606dd9c967264:0:11,20,5954:11,20,5956"
+      },
+      {
+        "points": [
+          {
+            "c": 0,
+            "x": -4888.25927734375,
+            "y": -1114.2987060546875,
+            "z": 502.3995056152344
+          },
+          {
+            "c": 0,
+            "x": -4887.36328125,
+            "y": -1114.130615234375,
+            "z": 502.1595764160156
+          }
+        ],
+        "source": "navmesh: static terrain + WMO/M2 collision",
+        "reliability": "navmesh",
+        "edge_id": "nav:7a4606dd9c967264:0:11,20,5956:11,20,5955"
+      },
+      {
+        "points": [
+          {
+            "c": 0,
+            "x": -4887.36328125,
+            "y": -1114.130615234375,
+            "z": 502.1595764160156
+          },
+          {
+            "c": 0,
+            "x": -4886.033203125,
+            "y": -1113.8812255859375,
+            "z": 502.2518310546875
+          }
+        ],
+        "source": "navmesh: static terrain + WMO/M2 collision",
+        "reliability": "navmesh",
+        "edge_id": "nav:7a4606dd9c967264:0:11,20,5955:11,20,5953"
+      },
+      {
+        "points": [
+          {
+            "c": 0,
+            "x": -4886.033203125,
+            "y": -1113.8812255859375,
+            "z": 502.2518310546875
+          },
+          {
+            "c": 0,
+            "x": -4885.509947444442,
+            "y": -1113.7830923241443,
+            "z": 502.2518310546875
+          }
+        ],
+        "source": "navmesh: static terrain + WMO/M2 collision",
+        "reliability": "navmesh",
+        "edge_id": "nav:7a4606dd9c967264:0:11,20,5953:11,20,5953"
+      },
+      {
+        "points": [
+          {
+            "c": 0,
+            "x": -4885.509947444442,
+            "y": -1113.7830923241443,
+            "z": 502.2518310546875
+          },
+          {
+            "c": 0,
+            "x": -4885.33349609375,
+            "y": -1113.75,
+            "z": 502.2518310546875
+          }
+        ],
+        "source": "navmesh: static terrain + WMO/M2 collision",
+        "reliability": "navmesh",
+        "edge_id": "nav:7a4606dd9c967264:0:11,20,5953:11,20,6346"
+      },
+      {
+        "points": [
+          {
+            "c": 0,
+            "x": -4885.33349609375,
+            "y": -1113.75,
+            "z": 502.2518310546875
+          },
+          {
+            "c": 0,
+            "x": -4884.61962890625,
+            "y": -1113.6162109375,
+            "z": 502.2518310546875
+          }
+        ],
+        "source": "navmesh: static terrain + WMO/M2 collision",
+        "reliability": "navmesh",
+        "edge_id": "nav:7a4606dd9c967264:0:11,20,6346:11,20,6347"
+      },
+      {
+        "points": [
+          {
+            "c": 0,
+            "x": -4884.61962890625,
+            "y": -1113.6162109375,
+            "z": 502.2518310546875
+          },
+          {
+            "c": 0,
+            "x": -4876,
+            "y": -1112,
+            "z": 502.2518310546875
+          }
+        ],
+        "source": "navmesh: static terrain + WMO/M2 collision",
+        "reliability": "navmesh",
+        "edge_id": "nav:7a4606dd9c967264:0:11,20,6347:11,20,6347"
+      },
+      {
+        "points": [
+          {
+            "c": 0,
+            "x": -4876,
+            "y": -1112,
+            "z": 502.2518310546875
+          },
+          {
+            "c": 0,
+            "x": -4875.16650390625,
+            "y": -1109.33349609375,
+            "z": 502.2518310546875
+          }
+        ],
+        "source": "navmesh: static terrain + WMO/M2 collision",
+        "reliability": "navmesh",
+        "edge_id": "nav:7a4606dd9c967264:0:11,20,6347:11,20,6355"
+      },
+      {
+        "points": [
+          {
+            "c": 0,
+            "x": -4875.16650390625,
+            "y": -1109.33349609375,
+            "z": 502.2518310546875
+          },
+          {
+            "c": 0,
+            "x": -4874.66943359375,
+            "y": -1107.7418212890625,
+            "z": 502.2518310546875
+          }
+        ],
+        "source": "navmesh: static terrain + WMO/M2 collision",
+        "reliability": "navmesh",
+        "edge_id": "nav:7a4606dd9c967264:0:11,20,6355:11,20,6368"
+      },
+      {
+        "points": [
+          {
+            "c": 0,
+            "x": -4874.66943359375,
+            "y": -1107.7418212890625,
+            "z": 502.2518310546875
+          },
+          {
+            "c": 0,
+            "x": -4868.5,
+            "y": -1088.0001220703125,
+            "z": 502.3751220703125
+          }
+        ],
+        "source": "navmesh: static terrain + WMO/M2 collision",
+        "reliability": "navmesh",
+        "edge_id": "nav:7a4606dd9c967264:0:11,20,6368:11,20,6389"
+      },
+      {
+        "points": [
+          {
+            "c": 0,
+            "x": -4868.5,
+            "y": -1088.0001220703125,
+            "z": 502.3751220703125
+          },
+          {
+            "c": 0,
+            "x": -4867.73046875,
+            "y": -1085.5369873046875,
+            "z": 502.2518310546875
+          }
+        ],
+        "source": "navmesh: static terrain + WMO/M2 collision",
+        "reliability": "navmesh",
+        "edge_id": "nav:7a4606dd9c967264:0:11,20,6389:11,20,6383"
+      },
+      {
+        "points": [
+          {
+            "c": 0,
+            "x": -4867.73046875,
+            "y": -1085.5369873046875,
+            "z": 502.2518310546875
+          },
+          {
+            "c": 0,
+            "x": -4866.66027632404,
+            "y": -1082.1126886133,
+            "z": 502.2518310546875
+          }
+        ],
+        "source": "navmesh: static terrain + WMO/M2 collision",
+        "reliability": "navmesh",
+        "edge_id": "nav:7a4606dd9c967264:0:11,20,6383:11,20,6383"
+      },
+      {
+        "points": [
+          {
+            "c": 0,
+            "x": -4866.66027632404,
+            "y": -1082.1126886133,
+            "z": 502.2518310546875
+          },
+          {
+            "c": 0,
+            "x": -4866,
+            "y": -1080,
+            "z": 502.2518310546875
+          }
+        ],
+        "source": "navmesh: static terrain + WMO/M2 collision",
+        "reliability": "navmesh",
+        "edge_id": "nav:7a4606dd9c967264:0:11,20,6383:11,20,6383"
+      },
+      {
+        "points": [
+          {
+            "c": 0,
+            "x": -4866,
+            "y": -1080,
+            "z": 502.2518310546875
+          },
+          {
+            "c": 0,
+            "x": -4872,
+            "y": -1074,
+            "z": 502.2518310546875
+          }
+        ],
+        "source": "navmesh: static terrain + WMO/M2 collision",
+        "reliability": "navmesh",
+        "edge_id": "nav:7a4606dd9c967264:0:11,20,6383:11,20,6383"
+      }
+    ],
+    "expanded": 2610
+  },
+  "telemetry": {
+    "session": 11075145,
+    "seq": 20423,
+    "c": 0,
+    "ui_map": 1455,
+    "x": -4895.625,
+    "y": -1115.125,
+    "facing": 3.167095084188392,
+    "speed": 0.0,
+    "flags": 1,
+    "captured_at": 44617.1849632,
+    "z": 502.0308532714844,
+    "raw_z": null,
+    "height_source": "trajectory",
+    "zone_token": 3778689663,
+    "environment": 5,
+    "floor_candidates": [
+      502.0308532714844
+    ],
+    "region_name": "铁炉堡",
+    "protocol_version": 4,
+    "ground_speed": 14.0,
+    "mounted": false
+  },
+  "calibration": {
+    "kind": "calibration",
+    "t": 27.147704399998474,
+    "calibration": {
+      "left_rate_rad_s": 3.0152309861877136,
+      "right_rate_rad_s": 3.1408256631958498,
+      "input_latency_s": 0.06656554999790387
+    },
+    "movement_calibration": {
+      "strafe_left_angle": 1.5822634150252677,
+      "strafe_right_angle": -1.5547281414492748,
+      "diagonal_left_angle": 0.7598957327988494,
+      "diagonal_right_angle": -0.7859213961350757,
+      "strafe_verified": true
+    }
+  }
+}

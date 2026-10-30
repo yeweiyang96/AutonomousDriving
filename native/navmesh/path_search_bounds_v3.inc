@@ -80,14 +80,14 @@ struct LengthDomainFilter final : GroundFilter {
 static int query(Context* ctx, const float* start, const float* goal,
                  int budget, float maxLengthXY, Cancel cancel,
                  float* output, uint64_t* refs, int capacity,
-                 int* count, int* expanded) {
+                 int* count, int* expanded, const GroundFilter* domain = nullptr) {
     Surface a, b;
     int rc = resolve(ctx, start, a); if (rc) return rc;
     rc = resolve(ctx, goal, b); if (rc) return rc;
     // Endpoint resolution is exactly the old strict over-polygon resolution.
     // A two-dimensional road cannot silently select a different height layer.
     LengthDomainFilter filter(ctx->filter, a.p, b.p, maxLengthXY);
-    auto status = ctx->query.initSlicedFindPath(a.ref, b.ref, a.p, b.p, &filter);
+    auto status = ctx->query.initSlicedFindPath(a.ref, b.ref, a.p, b.p, domain ? domain : &filter);
     while (dtStatusInProgress(status)) {
         if (cancel && cancel()) return 7;
         if (*expanded >= budget) return budgetResult(ctx, EXPANSION_LIMIT, status);

@@ -41,10 +41,10 @@ def road(i, a, b, status="user_reviewed", kind="walk"):
     return RoadEdge(f"road:{i}", a, b, status, kind, f"source-{i}")
 
 
-class PlannerTests(unittest.TestCase):
+class LegacyPlannerTests(unittest.TestCase):
     def test_long_wilderness_without_road(self):
         cells = {(100, col): (68, False) for col in range(100, 230)}
-        route = Planner(terrain_bundle(cells)).plan(p(100, 100), p(100, 229))
+        route = Planner(terrain_bundle(cells))._plan_coarse(p(100, 100), p(100, 229))
         self.assertGreater(route.distance, 2000)
         self.assertEqual(route.start, p(100, 100))
         self.assertEqual(route.goal, p(100, 229))
@@ -53,42 +53,42 @@ class PlannerTests(unittest.TestCase):
     def test_directed_terrain_does_not_become_bidirectional(self):
         cells = {(100, col): (4, False) for col in range(100, 105)}
         planner = Planner(terrain_bundle(cells))
-        planner.plan(p(100, 100), p(100, 104))
+        planner._plan_coarse(p(100, 100), p(100, 104))
         with self.assertRaises(PlanningError) as raised:
-            planner.plan(p(100, 104), p(100, 100))
+            planner._plan_coarse(p(100, 104), p(100, 100))
         self.assertEqual(raised.exception.code, "no_route")
 
     def test_water_requires_dry_detour(self):
         cells = {(r, c): (255, False) for r in range(99, 102) for c in range(100, 105)}
         cells[(100, 102)] = (255, True)
-        route = Planner(terrain_bundle(cells)).plan(p(100, 100), p(100, 104))
+        route = Planner(terrain_bundle(cells))._plan_coarse(p(100, 100), p(100, 104))
         self.assertGreater(route.distance, CELL_SIZE * 4)
         self.assertNotIn((100, 102), [cell(point) for point in route.points])
 
     def test_water_barrier_has_no_fabricated_bridge(self):
         cells = {(100, col): (68, col == 102) for col in range(100, 105)}
         with self.assertRaises(PlanningError) as raised:
-            Planner(terrain_bundle(cells)).plan(p(100, 100), p(100, 104))
+            Planner(terrain_bundle(cells))._plan_coarse(p(100, 100), p(100, 104))
         self.assertEqual(raised.exception.code, "no_route")
 
     def test_missing_terrain_is_not_relocated(self):
         cells = {(100, col): (68, False) for col in range(100, 105)}
         for start, goal, code in [(p(99, 100), p(100, 100), "start_unreachable"), (p(100, 100), p(100, 106), "goal_unreachable")]:
             with self.subTest(code=code), self.assertRaises(PlanningError) as raised:
-                Planner(terrain_bundle(cells)).plan(start, goal)
+                Planner(terrain_bundle(cells))._plan_coarse(start, goal)
             self.assertEqual(raised.exception.code, code)
 
     def test_diagonal_does_not_cut_blocked_corner(self):
         bundle = terrain_bundle({(100, 100): (8, False), (101, 101): (128, False)})
         self.assertFalse(bundle.line_clear(p(100, 100), p(101, 101)))
         with self.assertRaises(PlanningError):
-            Planner(bundle).plan(p(100, 100), p(101, 101))
+            Planner(bundle)._plan_coarse(p(100, 100), p(101, 101))
 
     def test_reviewed_roads_and_original_corner_preserved(self):
         nodes = [p(100, 100), p(110, 100), p(110, 110)]
         planner = Planner(DataBundle(nodes, [road(1, 0, 1), road(2, 1, 2)], {}))
         for start, end in ((nodes[0], nodes[2]), (nodes[2], nodes[0])):
-            route = planner.plan(start, end)
+            route = planner._plan_coarse(start, end)
             self.assertIn(nodes[1], route.points)
             self.assertEqual({s.reliability for s in route.segments}, {"reviewed"})
 
@@ -96,24 +96,24 @@ class PlannerTests(unittest.TestCase):
         nodes = [p(100, 100), p(100, 105)]
         planner = Planner(DataBundle(nodes, [road(1, 0, 1, "road_proposal")], {}))
         with self.assertRaises(PlanningError):
-            planner.plan(*nodes)
-        route = planner.plan(*nodes, allow_candidates=True)
+            planner._plan_coarse(*nodes)
+        route = planner._plan_coarse(*nodes, allow_candidates=True)
         self.assertEqual({s.reliability for s in route.segments}, {"candidate"})
         for kind in ("tunnel", "lift", "city_access"):
             with self.subTest(kind=kind), self.assertRaises(PlanningError):
-                Planner(DataBundle(nodes, [road(1, 0, 1, kind=kind)], {})).plan(*nodes, allow_candidates=True)
+                Planner(DataBundle(nodes, [road(1, 0, 1, kind=kind)], {}))._plan_coarse(*nodes, allow_candidates=True)
 
     def test_reviewed_detour_preferred_to_short_candidate(self):
         nodes = [p(100, 100), p(110, 100), p(100, 101)]
         edges = [road(1, 0, 1), road(2, 1, 2), road(3, 0, 2, "editor_proposal")]
-        route = Planner(DataBundle(nodes, edges, {})).plan(nodes[0], nodes[2], allow_candidates=True)
+        route = Planner(DataBundle(nodes, edges, {}))._plan_coarse(nodes[0], nodes[2], allow_candidates=True)
         self.assertIn(nodes[1], route.points)
         self.assertNotIn("road:3", [s.edge_id for s in route.segments])
 
     def test_road_and_terrain_can_join_between_disconnected_roads(self):
         cells = {(100, col): (68, False) for col in range(100, 108)}
         nodes = [p(100, 100), p(100, 102), p(100, 105), p(100, 107)]
-        route = Planner(terrain_bundle(cells, nodes, [road(1, 0, 1), road(2, 2, 3)])).plan(nodes[0], nodes[3])
+        route = Planner(terrain_bundle(cells, nodes, [road(1, 0, 1), road(2, 2, 3)]))._plan_coarse(nodes[0], nodes[3])
         ids = [s.edge_id for s in route.segments]
         self.assertIn("road:1", ids)
         self.assertIn("road:2", ids)
@@ -123,16 +123,16 @@ class PlannerTests(unittest.TestCase):
         cells = {(100, col): (68, False) for col in range(100, 105)}
         nodes = [p(100, 100), p(100, 104)]
         planner = Planner(terrain_bundle(cells, nodes, [road(1, 0, 1)]))
-        route = planner.plan(*nodes, blocked_edges=frozenset(("road:1",)))
+        route = planner._plan_coarse(*nodes, blocked_edges=frozenset(("road:1",)))
         self.assertEqual({s.reliability for s in route.segments}, {"terrain"})
         blocked = frozenset((route.segments[len(route.segments) // 2].edge_id, "road:1"))
         with self.assertRaises(PlanningError):
-            planner.plan(*nodes, blocked_edges=blocked)
+            planner._plan_coarse(*nodes, blocked_edges=blocked)
 
     def test_exact_endpoint_is_preserved_on_one_road_edge(self):
         nodes = [p(100, 100), p(100, 110)]
         start, goal = p(100, 102), p(100, 108)
-        route = Planner(DataBundle(nodes, [road(1, 0, 1)], {})).plan(start, goal)
+        route = Planner(DataBundle(nodes, [road(1, 0, 1)], {}))._plan_coarse(start, goal)
         self.assertEqual(route.points[0], start)
         self.assertEqual(route.points[-1], goal)
         self.assertAlmostEqual(route.distance, start.distance(goal))
@@ -142,7 +142,7 @@ class PlannerTests(unittest.TestCase):
         nodes = [p(100, 100), p(100, 105)]
         start = Point(0, p(100, 102).x + 3, p(100, 102).y)
         goal = Point(0, p(100, 104).x + 2, p(100, 104).y)
-        route = Planner(terrain_bundle(cells, nodes, [road(1, 0, 1)])).plan(start, goal)
+        route = Planner(terrain_bundle(cells, nodes, [road(1, 0, 1)]))._plan_coarse(start, goal)
         self.assertEqual(route.points[0], start)
         self.assertEqual(route.points[-1], goal)
         self.assertEqual(route.segments[0].reliability, "terrain")
@@ -157,7 +157,7 @@ class PlannerTests(unittest.TestCase):
             bundle = terrain_bundle(cells, nodes, [road(1, 0, 1, status)])
             for a, b in ((start, goal), (goal, start)):
                 with self.subTest(status=status, start=a):
-                    route = Planner(bundle).plan(a, b)
+                    route = Planner(bundle)._plan_coarse(a, b)
                     self.assertEqual(route.points[0], a)
                     self.assertEqual(route.points[-1], b)
                     self.assertEqual(route.segments[0].reliability, "terrain")
@@ -180,7 +180,7 @@ class PlannerTests(unittest.TestCase):
         ]
         for edges, a, blocked in cases:
             with self.subTest(edges=edges, start=a, blocked=blocked), self.assertRaises(PlanningError) as raised:
-                Planner(terrain_bundle(cells, nodes, edges)).plan(a, nodes[1], allow_candidates=True, blocked_edges=blocked)
+                Planner(terrain_bundle(cells, nodes, edges))._plan_coarse(a, nodes[1], allow_candidates=True, blocked_edges=blocked)
             self.assertEqual(raised.exception.code, "start_unreachable")
 
     def test_failed_water_road_access_is_not_retried(self):
@@ -188,9 +188,9 @@ class PlannerTests(unittest.TestCase):
         cells = {(100, col): (68, True) for col in range(100, 106)}
         start = Point(0, p(100, 102).x + 3, p(100, 102).y)
         planner = Planner(terrain_bundle(cells, nodes, [road(1, 0, 1)]))
-        route = planner.plan(start, nodes[1])
+        route = planner._plan_coarse(start, nodes[1])
         with self.assertRaises(PlanningError) as raised:
-            planner.plan(start, nodes[1], blocked_edges=frozenset((route.segments[0].edge_id,)))
+            planner._plan_coarse(start, nodes[1], blocked_edges=frozenset((route.segments[0].edge_id,)))
         self.assertEqual(raised.exception.code, "start_unreachable")
 
     def test_road_water_access_respects_directed_cell_boundary(self):
@@ -201,9 +201,9 @@ class PlannerTests(unittest.TestCase):
         cells = {(101, col): (68, True) for col in range(100, 106)}
         cells[(100, 102)] = (16, True)  # Only south, toward the road.
         planner = Planner(terrain_bundle(cells, nodes, [road(1, 0, 1)]))
-        self.assertEqual(planner.plan(start, nodes[1]).points[0], start)
+        self.assertEqual(planner._plan_coarse(start, nodes[1]).points[0], start)
         with self.assertRaises(PlanningError):
-            planner.plan(nodes[1], start)
+            planner._plan_coarse(nodes[1], start)
         # A known cell with the wrong direction, missing data, and a blocked
         # cell must all remain inaccessible even within the road tolerance.
         for info in ((1, True), (0, False), None):
@@ -213,7 +213,7 @@ class PlannerTests(unittest.TestCase):
             else:
                 restricted[(100, 102)] = info
             with self.subTest(info=info), self.assertRaises(PlanningError) as raised:
-                Planner(terrain_bundle(restricted, nodes, [road(1, 0, 1)])).plan(start, nodes[1])
+                Planner(terrain_bundle(restricted, nodes, [road(1, 0, 1)]))._plan_coarse(start, nodes[1])
             self.assertEqual(raised.exception.code, "start_unreachable")
 
     def test_road_water_access_does_not_cut_blocked_corner(self):
@@ -224,24 +224,24 @@ class PlannerTests(unittest.TestCase):
         nodes = [corner, Point(0, corner.x - 20, corner.y - 20)]
         cells = {(100, 100): (8, True), (101, 101): (128, True)}
         with self.assertRaises(PlanningError) as raised:
-            Planner(terrain_bundle(cells, nodes, [road(1, 0, 1)])).plan(start, nodes[1])
+            Planner(terrain_bundle(cells, nodes, [road(1, 0, 1)]))._plan_coarse(start, nodes[1])
         self.assertEqual(raised.exception.code, "start_unreachable")
 
     def test_different_continent_cancel_budget_and_invalid(self):
         planner = Planner(terrain_bundle({(100, c): (68, False) for c in range(100, 120)}))
         with self.assertRaises(PlanningError) as raised:
-            planner.plan(p(100, 100), Point(1, 0, 0))
+            planner._plan_coarse(p(100, 100), Point(1, 0, 0))
         self.assertEqual(raised.exception.code, "different_continent")
         cancel = threading.Event()
         cancel.set()
         with self.assertRaises(PlanningError) as raised:
-            planner.plan(p(100, 100), p(100, 119), cancel=cancel)
+            planner._plan_coarse(p(100, 100), p(100, 119), cancel=cancel)
         self.assertEqual(raised.exception.code, "cancelled")
         with self.assertRaises(PlanningError) as raised:
-            planner.plan(p(100, 100), p(100, 119), max_expansions=2)
+            planner._plan_coarse(p(100, 100), p(100, 119), max_expansions=2)
         self.assertEqual(raised.exception.code, "budget")
         with self.assertRaises(PlanningError) as raised:
-            planner.plan(Point(0, float("nan"), 0), p(100, 119))
+            planner._plan_coarse(Point(0, float("nan"), 0), p(100, 119))
         self.assertEqual(raised.exception.code, "invalid_point")
 
 
@@ -261,7 +261,7 @@ class RealDataRouteTests(unittest.TestCase):
             edge = next(e for e in bundle.edges if e.kind == "walk" and e.status == "user_reviewed" and bundle.nodes[e.a].c == c and bundle.nodes[e.a].distance(bundle.nodes[e.b]) > 5)
             for a, b in ((edge.a, edge.b), (edge.b, edge.a)):
                 with self.subTest(c=c, direction=(a, b)):
-                    route = planner.plan(bundle.nodes[a], bundle.nodes[b], max_expansions=100000)
+                    route = planner._plan_coarse(bundle.nodes[a], bundle.nodes[b], max_expansions=100000)
                     self.assertEqual(route.goal, bundle.nodes[b])
                     self.assertTrue(route.segments)
                     self.assertTrue(all(s.reliability == "reviewed" for s in route.segments))
@@ -273,7 +273,7 @@ class RealDataRouteTests(unittest.TestCase):
         # index identities. These checks are graph evidence, not playtesting.
         for a, b in ((3766, 3908), (3738, 3586), (1108, 512)):
             with self.subTest(endpoints=(a, b)):
-                route = planner.plan(bundle.nodes[a], bundle.nodes[b])
+                route = planner._plan_coarse(bundle.nodes[a], bundle.nodes[b])
                 self.assertLess(route.expanded, 500000)
                 self.assertEqual(route.points[0], bundle.nodes[a])
                 self.assertEqual(route.points[-1], bundle.nodes[b])
@@ -284,7 +284,7 @@ class RealDataRouteTests(unittest.TestCase):
     def test_real_wilderness_route_without_road_graph(self):
         bundle = self.bundle
         planner = Planner(DataBundle([], [], bundle.terrain))
-        route = planner.plan(bundle.nodes[1108], bundle.nodes[512])
+        route = planner._plan_coarse(bundle.nodes[1108], bundle.nodes[512])
         self.assertGreater(route.distance, 2000.)
         self.assertLess(route.expanded, 500000)
         self.assertTrue(all(s.reliability == "terrain" for s in route.segments))
@@ -299,7 +299,7 @@ class RealDataRouteTests(unittest.TestCase):
         self.assertTrue(self.bundle.info(start.c, *cell(start))[1])
         for a, b in ((start, goal), (goal, start)):
             with self.subTest(start=a):
-                route = Planner(self.bundle).plan(a, b)
+                route = Planner(self.bundle)._plan_coarse(a, b)
                 self.assertEqual(route.points[0], a)
                 self.assertEqual(route.points[-1], b)
                 access = route.segments[0] if a == start else route.segments[-1]

@@ -264,7 +264,7 @@ class WindowsCapture:
                 x0, y0, x1, y1 = self._panel.box
                 captured_at = time.monotonic()
                 image = self._measure("grab", self._backend.grab, (left + x0, top + y0, left + x1, top + y1))
-                local = PanelGeometry(self._panel.x - x0, self._panel.y - y0, self._panel.cell)
+                local = PanelGeometry(self._panel.x - x0, self._panel.y - y0, self._panel.cell, self._panel.rows)
                 try:
                     telemetry = self._measure("decode", decode_panel, image, local, captured_at)
                 except DecodeError as error:

@@ -11,6 +11,7 @@ from PIL import Image, ImageTk
 
 from .models import Point, Route, Telemetry
 from .maptiles import ImageCache, TilePyramid
+from .road_display import RoadDisplaySource
 from .submaps import Submaps, OverlayTile
 
 
@@ -39,13 +40,72 @@ class Viewport:
         self.west += anchor.y - after.y
 
 
-COLORS = {'reviewed': '#71c9a1', 'candidate': '#e5a652', 'terrain': '#d894ea', 'navmesh': '#6cbaff'}
+COLORS = {'road': '#ded9c8', 'reviewed': '#ded9c8', 'candidate': '#e6a14b', 'terrain': '#bd8cda', 'navmesh': '#388bff'}
+
+
+def draw_path(canvas, coordinates, color, *, width=5, tags=(), dash=(), outline=None, halo=None):
+    """Filled road strokes and a stronger, cased navigation overlay."""
+    options = dict(capstyle='round', joinstyle='round', tags=tags)
+    def paint(points):
+        if halo:
+            canvas.create_line(*points, fill=halo, width=width+5, **options)
+        if outline:
+            canvas.create_line(*points, fill=outline, width=width+2, **options)
+        return canvas.create_line(*points, fill=color, width=width, **options)
+    if not dash:
+        return paint(coordinates)
+    # Windows Tk maps custom dash patterns to a small set of system pens.
+    # Split in screen pixels so long dashes and sparse dots stay distinct.
+    index, remaining, chunk, item = 0, float(dash[0]), [], None
+    points = list(zip(coordinates[::2], coordinates[1::2]))
+    for (ax, ay), (bx, by) in zip(points, points[1:]):
+        length = math.hypot(bx-ax, by-ay)
+        position = 0.
+        while position < length - 1e-8:
+            step = min(remaining, length-position)
+            if index % 2 == 0:
+                if not chunk:
+                    chunk.extend((ax+(bx-ax)*position/length, ay+(by-ay)*position/length))
+                end = (position+step)/length
+                chunk.extend((ax+(bx-ax)*end, ay+(by-ay)*end))
+            position += step
+            remaining -= step
+            if remaining < 1e-8:
+                if chunk:
+                    item = paint(chunk)
+                    chunk = []
+                index = (index+1) % len(dash)
+                remaining = float(dash[index])
+    if chunk:
+        item = paint(chunk)
+    return item
+
+
+def draw_route_style(canvas, coordinates, reliability, *, width=None, tags=()):
+    if reliability == 'navmesh':
+        return draw_path(canvas, coordinates, COLORS[reliability], width=width or 5,
+                         outline='#164d9b', halo='#e6efff', tags=tags)
+    dash = {'candidate': (14, 8), 'terrain': (1, 9)}.get(reliability, ())
+    return draw_path(canvas, coordinates, COLORS.get(reliability, '#ded9c8'),
+                     width=(1.5 if reliability == 'terrain' else width or 2.5), dash=dash,
+                     outline='#47354f' if reliability == 'terrain' else '#625f54', tags=tags)
 
 
 class MapView(tk.Canvas):
     def __init__(self, parent, bundle, on_pick, on_hover=lambda p: None, **kw):
         super().__init__(parent, bg='#13232d', highlightthickness=0, **kw)
         self.bundle = bundle
+        # Road artwork has no execution authority. Do not decode the large
+        # execution graph or load its native DLL on the Tk/capture interpreter.
+        self._roads = RoadDisplaySource(bundle)
+        self._road_frame = None
+        self._road_transform = None
+        self._road_paint_job = None
+        self._road_paint_iterator = iter(())
+        self._road_items = {}
+        self._road_remaining = set()
+        self._road_retire_iterator = iter(())
+        self._road_painting_lines = True
         self.on_pick, self.on_hover = on_pick, on_hover
         self.view = Viewport()
         self.route: Route | None = None
@@ -97,17 +157,20 @@ class MapView(tk.Canvas):
             self._redraw_job = self.after(8, self.redraw)
 
     def _poll_images(self):
-        if self._images.poll():
+        images_changed=self._images.poll();roads_changed=self._roads.poll()
+        if images_changed or roads_changed:
             self.schedule_redraw()
         self._image_job = self.after(25, self._poll_images)
 
     def _destroy(self, event):
         if event.widget is not self:
             return
-        for job in (self._redraw_job, self._zoom_job, self._image_job):
+        for job in (self._redraw_job, self._zoom_job, self._image_job,self._road_paint_job):
             if job:
                 self.after_cancel(job)
         self._images.close()
+        self._roads.close()
+        self._road_items.clear()
         self._tile_items.clear()
         self._overlay_photos.clear()
         self._overlay_photo_bytes = 0
@@ -196,6 +259,7 @@ class MapView(tk.Canvas):
         self._drag = None
 
     def set_route(self, route: Route | None):
+        self.motion_points=()
         self.route = route
         self.draw_route()
 
@@ -317,39 +381,91 @@ class MapView(tk.Canvas):
         self._redraw_job = None
         if not self.winfo_exists():
             return
-        self.delete('roads', 'legend')
+        self.delete('legend')
         self._draw_tiles()
-        for edge in self.bundle.edges:
-            if edge.kind != 'walk':
-                continue
-            reviewed = edge.status in ('user_reviewed', 'user_correction')
-            if not reviewed and not self.candidates:
-                continue
-            a, b = self.bundle.nodes[edge.a], self.bundle.nodes[edge.b]
-            if a.c != self.view.c:
-                continue
-            ax, ay = self.view.screen(a)
-            bx, by = self.view.screen(b)
-            if self._visible(ax, ay, bx, by):
-                self.create_line(ax, ay, bx, by, fill='#3e7e6a' if reviewed else '#87633a',
-                                 width=1, tags='roads')
+        self._draw_roads()
         self.draw_route()
         self.draw_pose()
-        self.create_rectangle(12, 12, 462, 44, fill='#14232d', outline='', tags='legend')
-        for i, (label, reliability) in enumerate((('已审核道路', 'reviewed'), ('候选道路', 'candidate'), ('地形估算', 'terrain'), ('碰撞导航', 'navmesh'))):
-            self.create_text(24 + i * 112, 28, text='● ' + label,
+        self.create_rectangle(12, 12, 310, 44, fill='#14232d', outline='', tags='legend')
+        for i, (label, reliability) in enumerate((('道路', 'road'), ('碰撞导航', 'navmesh'))):
+            x = 24 + i * 128
+            draw_route_style(self, (x, 28, x+23, 28), reliability,
+                             width=4 if reliability == 'navmesh' else 2, tags='legend')
+            self.create_text(x + 30, 28, text=label,
                              fill=COLORS[reliability], anchor='w', font=('Microsoft YaHei UI', 10), tags='legend')
         label = '高清地形 · 本地离线' if self.pyramid.build else '概览地图'
         if self._shown_submaps:
             label = '高清地形 + 洞穴 / 主城'
         if self.pyramid.error or self.submaps.error or self._images.failed:
             label += ' · 部分底图不可用'
-        elif self._loading_tiles:
+        elif self._roads.error:
+            label += ' · 部分道路显示不可用'
+        elif self._loading_tiles or self._roads.pending:
             label += ' · 加载中'
         self.create_rectangle(12, self.view.height - 36, 272, self.view.height - 10,
                               fill='#14232d', outline='', tags='legend')
         self.create_text(24, self.view.height - 23, text=label, fill='#c2d1d9', anchor='w',
                          font=('Microsoft YaHei UI', 10), tags='legend')
+
+    def _draw_roads(self):
+        """Move the cached layer once during pans; paint new frames in small batches."""
+        self._roads.poll();self._roads.request(self.view)
+        now=(self.view.c,self.view.north,self.view.west,self.view.scale,self.view.width,self.view.height)
+        old=self._road_transform
+        if old is not None and old[0]==now[0]:
+            factor=now[3]/old[3]
+            if abs(factor-1)>1e-12:self.scale('roads',0,0,factor,factor)
+            dx=(now[4]-old[4]*factor)/2+(now[2]-old[2])*now[3]
+            dy=(now[5]-old[5]*factor)/2+(now[1]-old[1])*now[3]
+            if dx or dy:self.move('roads',dx,dy)
+            if (old[3]<.12)!=(now[3]<.12):
+                width=1.5 if now[3]<.12 else 2.5
+                self.itemconfigure('road-fill',width=width);self.itemconfigure('road-outline',width=width+2)
+        elif old is not None:
+            if self._road_paint_job:self.after_cancel(self._road_paint_job);self._road_paint_job=None
+            self.itemconfigure('roads',state='hidden');self._road_frame=None
+        self._road_transform=now
+        frame=self._roads.frame
+        if frame is not None and frame.c==self.view.c and frame is not self._road_frame:
+            if self._road_paint_job:self.after_cancel(self._road_paint_job)
+            self._road_frame=frame;self._road_paint_iterator=iter(frame.lines)
+            self._road_remaining=set(self._road_items);self._road_painting_lines=True
+            self._road_paint_job=self.after(1,self._paint_road_batch)
+
+    def _paint_road_batch(self):
+        self._road_paint_job=None;began=time.perf_counter()
+        for _ in range(64):
+            if not self._road_painting_lines:
+                key=next(self._road_retire_iterator,None)
+                if key is None:return
+                for item in self._road_items.pop(key,()):self.delete(item)
+                if time.perf_counter()-began>.004:break
+                continue
+            line=next(self._road_paint_iterator,None)
+            if line is None:
+                self._road_painting_lines=False;self._road_retire_iterator=iter(self._road_remaining)
+                continue
+            key=(line.c,line.kind,line.id);self._road_remaining.discard(key)
+            coordinates=tuple(v for p in line.points for v in
+                (self.view.width/2+(self.view.west-p[1])*self.view.scale,
+                 self.view.height/2+(self.view.north-p[0])*self.view.scale))
+            width=1.5 if self.view.scale<.12 else 2.5
+            if key in self._road_items:
+                for item in self._road_items[key]:
+                    self.coords(item,*coordinates);self.itemconfigure(item,state='normal')
+            elif line.kind=='connector':
+                item=self.create_line(*coordinates,fill='#a8b3b5',width=1.5,dash=(5,5),
+                    capstyle='round',joinstyle='round',tags=('roads','road-connector'))
+                self._road_items[key]=(item,)
+            else:
+                outline=self.create_line(*coordinates,fill='#625f54',width=width+2,
+                    capstyle='round',joinstyle='round',tags=('roads','road-outline'))
+                fill=self.create_line(*coordinates,fill=COLORS['road'],width=width,
+                    capstyle='round',joinstyle='round',tags=('roads','road-fill'))
+                self._road_items[key]=(outline,fill)
+            if time.perf_counter()-began>.004:break
+        self._road_paint_job=self.after(1,self._paint_road_batch)
+        self.tag_raise('route');self.tag_raise('pose');self.tag_raise('legend')
 
     def draw_route(self):
         self.delete('route')
@@ -357,8 +473,7 @@ class MapView(tk.Canvas):
             points, style = [], None
             def flush():
                 if len(points) >= 4:
-                    self.create_line(*points, fill=COLORS.get(style, '#fff'), width=3,
-                                     dash=(6, 3) if style == 'terrain' else (), tags='route')
+                    draw_route_style(self, points, style, tags='route')
             for part in self.route.segments:
                 if part.points and part.points[0].c == self.view.c and len(part.points) >= 2:
                     following = [v for p in part.points for v in self.view.screen(p)]
@@ -368,12 +483,22 @@ class MapView(tk.Canvas):
                         flush()
                         points, style = following, part.reliability
             flush()
+        self.draw_motion()
         for point, label, color in ((self.start, 'A', '#63c7e6'), (self.goal, 'B', '#ffa95b')):
             if point and point.c == self.view.c:
                 x, y = self.view.screen(point)
                 self.create_oval(x - 10, y - 10, x + 10, y + 10, fill=color, outline='#fff', tags='route')
                 self.create_text(x, y, text=label, fill='#16212a', tags='route')
         self.tag_raise('pose')
+
+    def set_motion(self,points):
+        self.motion_points=tuple(points)
+        self.draw_motion()
+
+    def draw_motion(self):
+        self.delete('motion')
+        points=[v for p in getattr(self,'motion_points',()) if p.c==self.view.c for v in self.view.screen(p)]
+        if len(points)>=4:self.create_line(*points,fill='#6ee7ad',width=3,tags='motion')
 
     def update_pose(self, pose: Telemetry, *, draw=True):
         if self.pose and self.pose.session != pose.session:

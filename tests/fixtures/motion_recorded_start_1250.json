@@ -1,0 +1,349 @@
+{
+  "schema": 1,
+  "provenance": {
+    "source_log": "20261030-125049-287038.jsonl",
+    "source_log_started_local": "2026-10-30T12:50:49.287038+09:00",
+    "route_event_s": 67.39445419999538,
+    "telemetry_event_s": 67.93133289999969,
+    "calibration_event_s": 53.3922292999996,
+    "original_goal": {
+      "c": 0,
+      "x": -6193.075156397482,
+      "y": 387.59193087352514,
+      "z": 392.3373107910156
+    },
+    "retained_source_segments": 12,
+    "retained_xy_yards": 66.61838541534658,
+    "selection": "Complete original route segments through the first vertex at or beyond 60 yards. The execution binding is corrected for offline replay; this does not constitute an in-game retest.",
+    "incident_client_walk_toggle_key": "NUMPAD_DIVIDE",
+    "incident_client_walk_hid_usage": 84,
+    "game_walk_toggle_key": "]",
+    "game_walk_hid_usage": 48,
+    "binding_evidence": {
+      "path": "C:\\Program Files (x86)\\World of Warcraft\\_forever_\\WTF\\Account\\1#1\\bindings-cache.wtf",
+      "observed_utc": "2026-10-30T03:59:28.951450+00:00",
+      "modified_utc": "2026-10-30T02:27:44.987108+00:00",
+      "sha256": "73817f27d9e65345e02e97ce4a6ec6f0e22b1fa28d907faf81484c2da4a4a95a",
+      "matched_lines": [
+        {
+          "line": 3,
+          "text": "bind NUMPADDIVIDE NONE"
+        },
+        {
+          "line": 7,
+          "text": "bind ] TOGGLERUN"
+        }
+      ],
+      "incident_client_walk_toggle_key": "NUMPAD_DIVIDE",
+      "scope": "Only the two relevant key-binding lines are recorded. Other binding/account contents are omitted."
+    },
+    "root_cause": {
+      "code": "walk_toggle_binding_mismatch",
+      "confirmed": true,
+      "reason": "Incident client used NUMPAD_DIVIDE, while the inspected game binding maps NUMPADDIVIDE to NONE and ] to TOGGLERUN.",
+      "consequence": "Pico accepted/completed the one-shot window, but game speed remained 14 yd/s until the client stopped. USB completion is not game-action confirmation.",
+      "measured_speed_yards_s": 13.869232199401539,
+      "evidence_boundary": "No game or device input was sent during this investigation. The binding file is current read-only evidence; the incident log independently records the client key and lack of speed reduction."
+    }
+  },
+  "navigation_replay_baseline": {
+    "identity": "7a4606dd9c967264",
+    "native_library_sha256": "fab4b0128ab823959d756633de719f0580c0d6b04bd2398ae3d12bae053af9da",
+    "captured_utc": "2026-10-30T04:03:01.136626+00:00",
+    "identity_source": "Incident motion_window navigation fields"
+  },
+  "bindings": {
+    "forward": 26,
+    "turn_left": 20,
+    "turn_right": 8,
+    "strafe_left": 4,
+    "strafe_right": 7,
+    "walk_toggle": 48
+  },
+  "route": {
+    "start": {
+      "c": 0,
+      "x": -4934.5,
+      "y": -1230.125,
+      "z": 501.718505859375
+    },
+    "goal": {
+      "c": 0,
+      "x": -4968,
+      "y": -1186,
+      "z": 501.718505859375
+    },
+    "segments": [
+      {
+        "points": [
+          {
+            "c": 0,
+            "x": -4934.5,
+            "y": -1230.125,
+            "z": 501.718505859375
+          },
+          {
+            "c": 0,
+            "x": -4930.3505859375,
+            "y": -1226.463623046875,
+            "z": 501.718505859375
+          }
+        ],
+        "source": "navmesh: static terrain + WMO/M2 collision",
+        "reliability": "navmesh",
+        "edge_id": "nav:7a4606dd9c967264:0:11,20,5288:11,20,5289"
+      },
+      {
+        "points": [
+          {
+            "c": 0,
+            "x": -4930.3505859375,
+            "y": -1226.463623046875,
+            "z": 501.718505859375
+          },
+          {
+            "c": 0,
+            "x": -4930.159552810613,
+            "y": -1226.2950474899064,
+            "z": 501.718505859375
+          }
+        ],
+        "source": "navmesh: static terrain + WMO/M2 collision",
+        "reliability": "navmesh",
+        "edge_id": "nav:7a4606dd9c967264:0:11,20,5289:11,20,5289"
+      },
+      {
+        "points": [
+          {
+            "c": 0,
+            "x": -4930.159552810613,
+            "y": -1226.2950474899064,
+            "z": 501.718505859375
+          },
+          {
+            "c": 0,
+            "x": -4930.4609375,
+            "y": -1225.95361328125,
+            "z": 501.718505859375
+          }
+        ],
+        "source": "navmesh: static terrain + WMO/M2 collision",
+        "reliability": "navmesh",
+        "edge_id": "nav:7a4606dd9c967264:0:11,20,5289:11,20,5288"
+      },
+      {
+        "points": [
+          {
+            "c": 0,
+            "x": -4930.4609375,
+            "y": -1225.95361328125,
+            "z": 501.718505859375
+          },
+          {
+            "c": 0,
+            "x": -4939.2451171875,
+            "y": -1216.0001220703125,
+            "z": 501.718505859375
+          }
+        ],
+        "source": "navmesh: static terrain + WMO/M2 collision",
+        "reliability": "navmesh",
+        "edge_id": "nav:7a4606dd9c967264:0:11,20,5288:11,20,5303"
+      },
+      {
+        "points": [
+          {
+            "c": 0,
+            "x": -4939.2451171875,
+            "y": -1216.0001220703125,
+            "z": 501.718505859375
+          },
+          {
+            "c": 0,
+            "x": -4939.685546875,
+            "y": -1215.5010986328125,
+            "z": 501.718505859375
+          }
+        ],
+        "source": "navmesh: static terrain + WMO/M2 collision",
+        "reliability": "navmesh",
+        "edge_id": "nav:7a4606dd9c967264:0:11,20,5303:11,20,5308"
+      },
+      {
+        "points": [
+          {
+            "c": 0,
+            "x": -4939.685546875,
+            "y": -1215.5010986328125,
+            "z": 501.718505859375
+          },
+          {
+            "c": 0,
+            "x": -4949.33349609375,
+            "y": -1204.5692138671875,
+            "z": 501.718505859375
+          }
+        ],
+        "source": "navmesh: static terrain + WMO/M2 collision",
+        "reliability": "navmesh",
+        "edge_id": "nav:7a4606dd9c967264:0:11,20,5308:11,20,5055"
+      },
+      {
+        "points": [
+          {
+            "c": 0,
+            "x": -4949.33349609375,
+            "y": -1204.5692138671875,
+            "z": 501.718505859375
+          },
+          {
+            "c": 0,
+            "x": -4954.923,
+            "y": -1198.236,
+            "z": 501.8692626953125
+          }
+        ],
+        "source": "navmesh: static terrain + WMO/M2 collision",
+        "reliability": "navmesh",
+        "edge_id": "nav:7a4606dd9c967264:0:11,20,5055:11,20,5055"
+      },
+      {
+        "points": [
+          {
+            "c": 0,
+            "x": -4954.923,
+            "y": -1198.236,
+            "z": 501.8692626953125
+          },
+          {
+            "c": 0,
+            "x": -4954.76611328125,
+            "y": -1197.8175048828125,
+            "z": 501.8633728027344
+          }
+        ],
+        "source": "navmesh: static terrain + WMO/M2 collision",
+        "reliability": "navmesh",
+        "edge_id": "nav:7a4606dd9c967264:0:11,20,5055:11,20,5054"
+      },
+      {
+        "points": [
+          {
+            "c": 0,
+            "x": -4954.76611328125,
+            "y": -1197.8175048828125,
+            "z": 501.8633728027344
+          },
+          {
+            "c": 0,
+            "x": -4953.58447265625,
+            "y": -1194.666748046875,
+            "z": 501.718505859375
+          }
+        ],
+        "source": "navmesh: static terrain + WMO/M2 collision",
+        "reliability": "navmesh",
+        "edge_id": "nav:7a4606dd9c967264:0:11,20,5054:11,20,5057"
+      },
+      {
+        "points": [
+          {
+            "c": 0,
+            "x": -4953.58447265625,
+            "y": -1194.666748046875,
+            "z": 501.718505859375
+          },
+          {
+            "c": 0,
+            "x": -4952.512438356164,
+            "y": -1191.8078356164385,
+            "z": 501.718505859375
+          }
+        ],
+        "source": "navmesh: static terrain + WMO/M2 collision",
+        "reliability": "navmesh",
+        "edge_id": "nav:7a4606dd9c967264:0:11,20,5057:11,20,5057"
+      },
+      {
+        "points": [
+          {
+            "c": 0,
+            "x": -4952.512438356164,
+            "y": -1191.8078356164385,
+            "z": 501.718505859375
+          },
+          {
+            "c": 0,
+            "x": -4958.575180989715,
+            "y": -1189.534307128857,
+            "z": 501.718505859375
+          }
+        ],
+        "source": "navmesh: static terrain + WMO/M2 collision",
+        "reliability": "navmesh",
+        "edge_id": "nav:7a4606dd9c967264:0:11,20,5057:11,20,5057"
+      },
+      {
+        "points": [
+          {
+            "c": 0,
+            "x": -4958.575180989715,
+            "y": -1189.534307128857,
+            "z": 501.718505859375
+          },
+          {
+            "c": 0,
+            "x": -4968,
+            "y": -1186,
+            "z": 501.718505859375
+          }
+        ],
+        "source": "navmesh: static terrain + WMO/M2 collision",
+        "reliability": "navmesh",
+        "edge_id": "nav:7a4606dd9c967264:0:11,20,5057:11,20,5057"
+      }
+    ],
+    "expanded": 2515
+  },
+  "telemetry": {
+    "session": 154494071,
+    "seq": 84537,
+    "c": 0,
+    "ui_map": 1455,
+    "x": -4934.5,
+    "y": -1230.125,
+    "facing": 5.496540784391981,
+    "speed": 0.0,
+    "flags": 1,
+    "captured_at": 48952.9973258,
+    "z": 501.718505859375,
+    "raw_z": null,
+    "height_source": "trajectory",
+    "zone_token": 2360602079,
+    "environment": 5,
+    "floor_candidates": [
+      501.718505859375
+    ],
+    "region_name": "铁炉堡",
+    "protocol_version": 4,
+    "ground_speed": 14.0,
+    "mounted": false
+  },
+  "calibration": {
+    "kind": "calibration",
+    "t": 53.3922292999996,
+    "calibration": {
+      "left_rate_rad_s": 3.1417844011882767,
+      "right_rate_rad_s": 3.1259652243132052,
+      "input_latency_s": 0.0637499000004027
+    },
+    "movement_calibration": {
+      "strafe_left_angle": 1.5720426861850534,
+      "strafe_right_angle": -1.5695499674047397,
+      "diagonal_left_angle": 0.7866445227876051,
+      "diagonal_right_angle": -0.7841518040072915,
+      "strafe_verified": true
+    }
+  },
+  "simulation_assumption": "Correct game binding ] (HID48) executes the walk toggle once after the measured input latency. The recorded HID84 binding failure is not treated as a successful game retest."
+}

@@ -22,10 +22,12 @@ STOP_NAMES = {
     0: '未记录停止', 1: '客户端请求停止', 2: '输入租约到期',
     3: 'Wi-Fi 不可用', 4: 'USB 不可用', 5: 'USB 传输失败',
     6: 'USB 提交停滞', 7: '旧协议全部释放', 8: '固件内部取消',
+    9: '运动窗口耗尽', 10: 'USB 时间序列延误',
 }
 CAPABILITY_NAMES = {
     0: '连续按键', 1: '定时短动作', 2: '抢占停止',
     3: '扩展诊断', 4: 'USB 完成时间', 5: '故障计数',
+    6: '原子替换运动窗口',
 }
 
 
@@ -91,13 +93,14 @@ class FirmwareDiagnostic:
     def capability_names(self):
         return tuple(name for bit, name in CAPABILITY_NAMES.items() if self.capabilities & (1 << bit))
 
-    def compatibility_issues(self):
+    def compatibility_issues(self,protocol=3):
         issues = []
         for bit in (0, 1, 2):
             if not self.capabilities & (1 << bit):
                 issues.append('缺少' + CAPABILITY_NAMES[bit])
-        if not self.protocol_min <= 3 <= self.protocol_max:
-            issues.append('不支持客户端 ADR v3 协议')
+        if not self.protocol_min <= protocol <= self.protocol_max:
+            issues.append(f'不支持客户端 ADRV v{protocol} 协议')
+        if protocol>=4 and not self.capabilities&64:issues.append('缺少原子替换运动窗口')
         if not self.lease_min_ms <= LEASE_MS <= self.lease_max_ms:
             issues.append(f'不支持 {LEASE_MS} ms 租约')
         if not self.hold_min_ms <= 20 <= 200 <= self.hold_max_ms:
@@ -172,8 +175,8 @@ def describe_diagnostic(result: DiagnosticResult):
                     result.message + f'；USB={result.health.usb_mounted}，Wi-Fi={result.health.wifi_up}。'
                     '版本号与能力范围未提供，不能据此认定支持连续导航。')
         return 'Pico 诊断未完成', result.message
-    issues = d.compatibility_issues()
-    compatibility = '可用于当前连续导航' if not issues else '不兼容：' + '；'.join(issues)
+    issues = d.compatibility_issues(protocol=4)
+    compatibility = '连续导航协议兼容；角色校准状态见界面校准提示' if not issues else '不兼容：' + '；'.join(issues)
     summary = (f'固件 {d.version} · ADR {d.protocol_min}–{d.protocol_max}\n'
                f'租约 {d.lease_min_ms}–{d.lease_max_ms} ms · {compatibility}')
     stop_text = (f'{STOP_NAMES[d.stop.reason]}（设备启动后 {d.stop.time_ms} ms）'
